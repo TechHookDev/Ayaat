@@ -57,10 +57,12 @@
 
 <p align="center">
   <img src="assets/screenshot_home.png" width="200" alt="Home Screen" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
+  &nbsp;&nbsp;
+  <img src="assets/screenshot_surah_list.png" width="200" alt="Surah List" />
+  &nbsp;&nbsp;
+  <img src="assets/screenshot_reader.png" width="200" alt="Quran Reader" />
+  &nbsp;&nbsp;
   <img src="assets/screenshot_settings.png" width="200" alt="Settings Screen" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/screenshot_picker.png" width="200" alt="Premium Time Picker" />
 </p>
 
 ---
