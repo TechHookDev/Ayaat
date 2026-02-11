@@ -1,16 +1,60 @@
-# Ayaat
+# Ayaat (آيات) - Daily Quranic Verses
 
-A new Flutter project.
+<div align="center">
+  <img src="assets/icon.png" alt="Ayaat App Icon" width="120">
+  <br><br>
+  <h1>Ayaat - Daily Quranic Verses & Prayer Times</h1>
+  <p>A beautifully designed Flutter application for daily Quranic inspiration and accurate prayer notifications.</p>
+</div>
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 🌟 Features
 
-A few resources to get you started if this is your first Flutter project:
+### 📖 Daily Inspiration
+- **Verse of the Day**: Receive a carefully selected Ayah every day.
+- **Multi-language Support**: Read verses in **Arabic**, **English**, and **French**.
+- **Beautiful Typography**: Uses **Amiri** for Arabic script and **Outfit/Inter** for modern legibility.
+- **Interactive UI**: Scroll through verses with smooth animations and "Continue Reading" functionality.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### 🕌 Prayer Times & Notifications
+- **Accurate Calculations**: Uses the `adhan` package to calculate prayer times based on your precise location.
+- **Smart Reminders**: Get notified **30 minutes after** each prayer time (Fajr, Dhuhr, Asr, Maghrib, Isha).
+- **Manual Mode**: Option to set custom fixed notification times if preferred.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 🎨 Premium User Experience
+- **Elegant Dark Theme**: A sophisticated user interface with Deep Blue and Gold accents (`#0D1B2A` & `#1A237E`).
+- **Custom Time Picker**: A bespoke, "original" scrolling wheel input for setting times, replacing standard OS pickers.
+- **Smooth Animations**: Polished transitions and interactive elements.
+
+## 🛠️ Tech Stack
+- **Framework**: Flutter (Dark/Light mode support).
+- **State Management**: `setState` & localized state.
+- **Location**: `geolocator` for prayer time accuracy.
+- **Notifications**: `flutter_local_notifications` with exact alarm scheduling (`AlarmManager` on Android).
+- **Storage**: `shared_preferences` for saving user settings.
+
+## 🚀 Getting Started
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/RebbahD/ayaat.git
+    cd ayaat
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    flutter pub get
+    ```
+
+3.  **Run the app**:
+    ```bash
+    flutter run
+    ```
+    *(Note: Location permissions are required for Prayer Times features)*
+
+## 📸 Screenshots
+*(Embed screenshots of Home, Verse Detail, and Settings screens here)*
+
+---
+Developed with ❤️ by **Dhiaa Rebbah**.
