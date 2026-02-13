@@ -38,7 +38,7 @@
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/RebbahD/ayaat.git
+    git clone https://github.com/TechHookDev/Ayaat.git
     cd ayaat
     ```
 

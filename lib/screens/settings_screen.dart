@@ -171,11 +171,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _getDevelopedBy() {
     switch (_currentLanguage) {
       case AppLanguage.arabic:
-        return 'جميع الحقوق محفوظة لـ Techhook';
+        return 'جميع الحقوق محفوظة';
       case AppLanguage.english:
-        return 'All rights reserved to Techhook';
+        return 'All rights reserved';
       case AppLanguage.french:
-        return 'Tous droits réservés à Techhook';
+        return 'Tous droits réservés';
     }
   }
 
@@ -190,14 +190,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  String _getContactMe() {
+  String _getContactUs() {
     switch (_currentLanguage) {
       case AppLanguage.arabic:
-        return 'راسلني';
+        return 'اتصل بنا';
       case AppLanguage.english:
-        return 'Email Me';
+        return 'Contact Us';
       case AppLanguage.french:
-        return 'M\'écrire';
+        return 'Contactez-nous';
     }
   }
 
@@ -387,8 +387,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _launchEmail() async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
-      path: 'dhiaarebbah@gmail.com',
-      query: 'subject=Ayaat App',
+      path: 'contact@techhook.dev',
+      query: 'subject=Ayaat App Inquiry',
     );
     if (await canLaunchUrl(emailUri)) {
       await launchUrl(emailUri);
@@ -780,7 +780,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     : TextDirection.ltr,
                               ),
                               const SizedBox(height: 16),
-                              // Developed By
                               Text(
                                 _getDevelopedBy(),
                                 style: GoogleFonts.amiri(
@@ -789,7 +788,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 8),
+                              // TechHook Logo
+                              InkWell(
+                                onTap: () async {
+                                  final Uri url = Uri.parse('https://techhook.dev');
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url);
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                  ),
+                                  child: Image.asset(
+                                    'assets/techhook_logo.png',
+                                    height: 50,
+                                    width: 50,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
                               // Duaa message
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -818,53 +841,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              // Contact button
-                              Center(
-                                child: InkWell(
-                                  onTap: () async {
-                                    final Uri url = Uri.parse('https://techhook.dev');
-                                    if (await canLaunchUrl(url)) {
-                                      await launchUrl(url);
-                                    }
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFFFFD700,
-                                      ).withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: const Color(0xFFFFD700),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.language,
-                                          color: const Color(0xFFFFD700),
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'techhook.dev',
-                                          style: GoogleFonts.amiri(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFFFFD700),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
+
+
                               // Contact button
                               Center(
                                 child: InkWell(
@@ -894,7 +872,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          _getContactMe(),
+                                          _getContactUs(),
                                           style: GoogleFonts.amiri(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
