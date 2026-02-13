@@ -160,22 +160,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _getAppDescription() {
     switch (_currentLanguage) {
       case AppLanguage.arabic:
-        return 'تطبيق آيات يساعدك على التواصل مع كتاب الله من خلال آيات يومية مختارة بعناية، مع التنبيهات في أوقات مناسبة';
+        return 'تطبيق آيات يذكرك بقراءة القرآن في أوقات محددة، ويساعدك على البقاء على تواصل مع كتاب الله';
       case AppLanguage.english:
-        return 'Ayaat helps you connect with the Book of Allah through carefully selected daily verses, with notifications at appropriate times';
+        return 'Ayaat reminds you to read the Quran at specific set times, helping you stay connected with the Book of Allah';
       case AppLanguage.french:
-        return 'Ayaat vous aide à vous connecter avec le Livre d\'Allah à travers des versets quotidiens soigneusement sélectionnés, avec des notifications aux moments appropriés';
+        return 'Ayaat vous rappelle de lire le Coran à des moments précis, vous aidant à rester connecté avec le Livre d\'Allah';
     }
   }
 
   String _getDevelopedBy() {
     switch (_currentLanguage) {
       case AppLanguage.arabic:
-        return 'جميع الحقوق محفوظة لضياء رباح';
+        return 'جميع الحقوق محفوظة لـ Techhook';
       case AppLanguage.english:
-        return 'All rights reserved to Dhiaa Rebbah';
+        return 'All rights reserved to Techhook';
       case AppLanguage.french:
-        return 'Tous droits réservés à Dhiaa Rebbah';
+        return 'Tous droits réservés à Techhook';
     }
   }
 
@@ -821,7 +821,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               // Contact button
                               Center(
                                 child: InkWell(
-                                  onTap: _launchEmail,
+                                  onTap: () async {
+                                    final Uri url = Uri.parse('https://techhook.dev');
+                                    if (await canLaunchUrl(url)) {
+                                      await launchUrl(url);
+                                    }
+                                  },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -835,6 +840,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color: const Color(0xFFFFD700),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.language,
+                                          color: const Color(0xFFFFD700),
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'techhook.dev',
+                                          style: GoogleFonts.amiri(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFFFFD700),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // Contact button
+                              Center(
+                                child: InkWell(
+                                  onTap: _launchEmail,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFFFFD700,
+                                      ).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: const Color(0xFFFFD700).withOpacity(0.5),
                                       ),
                                     ),
                                     child: Row(
@@ -870,7 +917,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
           // Version
           Text(
-            'v1.0.0',
+            'v1.0.2',
             style: GoogleFonts.outfit(fontSize: 12, color: Colors.white38),
           ),
           const SizedBox(height: 20),

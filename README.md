@@ -3,8 +3,8 @@
 <div align="center">
   <img src="assets/icon.png" alt="Ayaat App Icon" width="120">
   <br><br>
-  <h1>Ayaat - Daily Quranic Verses & Prayer Times</h1>
-  <p>A beautifully designed Flutter application for daily Quranic inspiration and accurate prayer notifications.</p>
+  <h1>Ayaat - Daily Quran Reading Reminders</h1>
+  <p>A beautifully designed Flutter application to remind you to read the Quran at specific set times, helping you stay connected with the Book of Allah.</p>
 </div>
 
 ---
@@ -70,4 +70,4 @@
 </p>
 
 ---
-Developed with ❤️ by **Dhiaa Rebbah**.
+Developed with ❤️ by **[Techhook](https://techhook.dev)**.
