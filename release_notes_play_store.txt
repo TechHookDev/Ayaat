@@ -1,0 +1,18 @@
+<en-US>
+- Rebranded to TechHook.
+- Updated contact information to contact@techhook.dev.
+- Added official TechHook logo in Settings.
+- Improved About section layout.
+</en-US>
+<ar>
+- تم تغيير العلامة التجارية إلى TechHook.
+- تحديث البريد الإلكتروني للتواصل إلى contact@techhook.dev.
+- إضافة شعار TechHook الرسمي في الإعدادات.
+- تحسين تصميم قسم "عن التطبيق".
+</ar>
+<fr-FR>
+- Passage à la marque TechHook.
+- Mise à jour de l'e-mail de contact : contact@techhook.dev.
+- Ajout du logo officiel TechHook dans les Paramètres.
+- Amélioration de la mise en page de la section "À propos".
+</fr-FR>
