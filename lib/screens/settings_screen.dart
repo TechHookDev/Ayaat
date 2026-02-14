@@ -967,13 +967,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final period = time.hour >= 12
         ? (_currentLanguage == AppLanguage.arabic
               ? 'م'
-              : _currentLanguage == AppLanguage.english
-              ? 'PM'
               : 'PM')
         : (_currentLanguage == AppLanguage.arabic
               ? 'ص'
-              : _currentLanguage == AppLanguage.english
-              ? 'AM'
               : 'AM');
     final hour12 = time.hour > 12
         ? time.hour - 12
@@ -1129,7 +1125,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: Text(
-                          _currentLanguage == AppLanguage.arabic ? 'إلغاء' : 'Cancel',
+                          _currentLanguage == AppLanguage.arabic
+                              ? 'إلغاء'
+                              : _currentLanguage == AppLanguage.french
+                                  ? 'Annuler'
+                                  : 'Cancel',
                           style: GoogleFonts.amiri(
                             fontSize: 16,
                             color: Colors.white54,
@@ -1137,7 +1137,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       Text(
-                        _currentLanguage == AppLanguage.arabic ? 'اختر الوقت' : 'Select Time',
+                        _currentLanguage == AppLanguage.arabic
+                            ? 'اختر الوقت'
+                            : _currentLanguage == AppLanguage.french
+                                ? 'Choisir l\'heure'
+                                : 'Select Time',
                         style: GoogleFonts.amiri(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -1161,7 +1165,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           Navigator.pop(context, TimeOfDay(hour: hour, minute: minute));
                         },
                         child: Text(
-                          _currentLanguage == AppLanguage.arabic ? 'تم' : 'Done',
+                          _currentLanguage == AppLanguage.arabic
+                              ? 'تم'
+                              : _currentLanguage == AppLanguage.french
+                                  ? 'OK'
+                                  : 'Done',
                           style: GoogleFonts.amiri(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
