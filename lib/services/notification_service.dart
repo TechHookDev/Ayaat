@@ -90,8 +90,8 @@ class NotificationService {
   /// Request notification permissions (should be called when user enables notifications)
   Future<bool> requestPermissions() async {
     if (Platform.isAndroid) {
-      final androidPlugin = _notifications
-          .resolvePlatformSpecificImplementation<
+      final androidPlugin =
+          _notifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >();
 
@@ -109,6 +109,20 @@ class NotificationService {
       );
 
       return notificationGranted;
+    } else if (Platform.isIOS) {
+      final iosPlugin =
+          _notifications.resolvePlatformSpecificImplementation<
+            DarwinFlutterLocalNotificationsPlugin
+          >();
+      final granted =
+          await iosPlugin?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          ) ??
+          false;
+      debugPrint('iOS Notification permission granted: $granted');
+      return granted;
     }
     return true;
   }
@@ -134,22 +148,34 @@ class NotificationService {
   Future<List<TimeOfDay>?> schedulePrayerTimes() async {
     // Check notification permission first
     if (Platform.isAndroid) {
-      final androidPlugin = _notifications
-          .resolvePlatformSpecificImplementation<
+      final androidPlugin =
+          _notifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >();
       final bool? granted = await androidPlugin?.requestNotificationsPermission();
       if (granted != true) {
-         debugPrint('Notification permission denied. Cannot schedule prayer times.');
-         return null;
+        debugPrint(
+          'Notification permission denied. Cannot schedule prayer times.',
+        );
+        return null;
+      }
+    } else if (Platform.isIOS) {
+      final bool granted = await requestPermissions();
+      if (!granted) {
+        debugPrint(
+          'iOS Notification permission denied. Cannot schedule prayer times.',
+        );
+        return null;
       }
     }
 
     // Check exact alarm permission
-    final exactAlarmStatus = await requestExactAlarmsPermission();
-    if (exactAlarmStatus != ExactAlarmPermissionStatus.granted) {
-      debugPrint('Exact alarm permission not granted.');
-      return null;
+    if (Platform.isAndroid) {
+      final exactAlarmStatus = await requestExactAlarmsPermission();
+      if (exactAlarmStatus != ExactAlarmPermissionStatus.granted) {
+        debugPrint('Exact alarm permission not granted.');
+        return null;
+      }
     }
 
     try {
@@ -268,24 +294,36 @@ class NotificationService {
   Future<bool> scheduleMultipleDaily(List<TimeOfDay> times) async {
     // Check notification permission first
     if (Platform.isAndroid) {
-      final androidPlugin = _notifications
-          .resolvePlatformSpecificImplementation<
+      final androidPlugin =
+          _notifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >();
       final bool? granted = await androidPlugin?.requestNotificationsPermission();
       if (granted != true) {
-         debugPrint('Notification permission decreased/denied. Cannot schedule.');
-         return false;
+        debugPrint(
+          'Notification permission decreased/denied. Cannot schedule.',
+        );
+        return false;
+      }
+    } else if (Platform.isIOS) {
+      final bool granted = await requestPermissions();
+      if (!granted) {
+        debugPrint(
+          'iOS Notification permission denied. Cannot schedule notifications.',
+        );
+        return false;
       }
     }
 
-    // Check exact alarm permission
-    final exactAlarmStatus = await requestExactAlarmsPermission();
-    if (exactAlarmStatus != ExactAlarmPermissionStatus.granted) {
-      debugPrint(
-        'Exact alarm permission not granted. Cannot schedule notifications.',
-      );
-      return false;
+    // Check exact alarm permission (Android only)
+    if (Platform.isAndroid) {
+      final exactAlarmStatus = await requestExactAlarmsPermission();
+      if (exactAlarmStatus != ExactAlarmPermissionStatus.granted) {
+        debugPrint(
+          'Exact alarm permission not granted. Cannot schedule notifications.',
+        );
+        return false;
+      }
     }
     
      debugPrint('Scheduling ${times.length} notifications.');
