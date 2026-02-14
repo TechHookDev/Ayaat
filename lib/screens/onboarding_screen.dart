@@ -42,7 +42,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _startNextButtonAnimation() {
-    _nextButtonTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _nextButtonTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (_currentPage == 0) {
         setState(() {
           _animatedLabelIndex = (_animatedLabelIndex + 1) % _nextLabels.length;
@@ -294,22 +294,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _selectTime(int index) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _notificationTimes[index],
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFFFD700),
-              onPrimary: Color(0xFF0D1B2A),
-              surface: Color(0xFF1A237E),
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
+    final picked = await _showCustomTimePicker(
+      context,
+      _notificationTimes[index],
     );
 
     if (picked != null) {
@@ -317,6 +304,228 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         _notificationTimes[index] = picked;
       });
     }
+  }
+
+  Future<TimeOfDay?> _showCustomTimePicker(
+    BuildContext context,
+    TimeOfDay initialTime,
+  ) async {
+    // Convert to 12h format for the picker
+    int selectedHour12 = initialTime.hourOfPeriod;
+    if (selectedHour12 == 0) selectedHour12 = 12;
+    final selectedMinute = initialTime.minute;
+
+    final hourController =
+        FixedExtentScrollController(initialItem: selectedHour12 - 1);
+    final minuteController =
+        FixedExtentScrollController(initialItem: selectedMinute);
+    final periodController = FixedExtentScrollController(
+      initialItem: initialTime.period == DayPeriod.am ? 0 : 1,
+    );
+
+    return await showModalBottomSheet<TimeOfDay>(
+      context: context,
+      backgroundColor: const Color(0xFF0D1B2A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              height: 350,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          _selectedLanguage == AppLanguage.arabic
+                              ? 'إلغاء'
+                              : _selectedLanguage == AppLanguage.french
+                                  ? 'Annuler'
+                                  : 'Cancel',
+                          style: GoogleFonts.amiri(
+                            fontSize: 16,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        _selectedLanguage == AppLanguage.arabic
+                            ? 'اختر الوقت'
+                            : _selectedLanguage == AppLanguage.french
+                                ? 'Choisir l\'heure'
+                                : 'Select Time',
+                        style: GoogleFonts.amiri(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Calculate final TimeOfDay
+                          int hour = hourController.selectedItem + 1;
+                          final minute = minuteController.selectedItem;
+                          final periodIndex = periodController.selectedItem; // 0=AM, 1=PM
+                          
+                          // Convert back to 24h
+                          if (periodIndex == 0) { // AM
+                            if (hour == 12) hour = 0;
+                          } else { // PM
+                            if (hour != 12) hour += 12;
+                          }
+                          
+                          Navigator.pop(context, TimeOfDay(hour: hour, minute: minute));
+                        },
+                        child: Text(
+                          _selectedLanguage == AppLanguage.arabic
+                              ? 'تم'
+                              : _selectedLanguage == AppLanguage.french
+                                  ? 'OK'
+                                  : 'Done',
+                          style: GoogleFonts.amiri(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFFFD700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+                  // Wheel Pickers
+                  Expanded(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Selection Highlight
+                        Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFD700).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.symmetric(
+                              horizontal: BorderSide(
+                                color: const Color(0xFFFFD700).withOpacity(0.5), 
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Wheels
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Hours
+                            SizedBox(
+                              width: 70,
+                              child: ListWheelScrollView.useDelegate(
+                                controller: hourController,
+                                itemExtent: 50,
+                                perspective: 0.005,
+                                diameterRatio: 1.2,
+                                physics: const FixedExtentScrollPhysics(),
+                                childDelegate: ListWheelChildBuilderDelegate(
+                                  childCount: 12,
+                                  builder: (context, index) {
+                                    return Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              ":",
+                              style: GoogleFonts.outfit(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFFFD700),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Minutes
+                            SizedBox(
+                              width: 70,
+                              child: ListWheelScrollView.useDelegate(
+                                controller: minuteController,
+                                itemExtent: 50,
+                                perspective: 0.005,
+                                diameterRatio: 1.2,
+                                physics: const FixedExtentScrollPhysics(),
+                                childDelegate: ListWheelChildBuilderDelegate(
+                                  childCount: 60,
+                                  builder: (context, index) {
+                                    return Center(
+                                      child: Text(
+                                        index.toString().padLeft(2, '0'),
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            // Period (AM/PM)
+                            SizedBox(
+                              width: 70,
+                              child: ListWheelScrollView.useDelegate(
+                                controller: periodController,
+                                itemExtent: 50,
+                                perspective: 0.005,
+                                diameterRatio: 1.2,
+                                physics: const FixedExtentScrollPhysics(),
+                                childDelegate: ListWheelChildBuilderDelegate(
+                                  childCount: 2,
+                                  builder: (context, index) {
+                                    final text = _selectedLanguage == AppLanguage.arabic
+                                        ? (index == 0 ? 'ص' : 'م')
+                                        : (index == 0 ? 'AM' : 'PM');
+                                    return Center(
+                                      child: Text(
+                                        text,
+                                        style: GoogleFonts.amiri(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFFFFD700),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -1143,7 +1352,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   String _formatTime(TimeOfDay time) {
     final minute = time.minute.toString().padLeft(2, '0');
-    final period = time.hour >= 12 ? 'م' : 'ص';
+    final period = time.hour >= 12
+        ? (_selectedLanguage == AppLanguage.arabic ? 'م' : 'PM')
+        : (_selectedLanguage == AppLanguage.arabic ? 'ص' : 'AM');
     final hour12 = time.hour > 12
         ? time.hour - 12
         : (time.hour == 0 ? 12 : time.hour);

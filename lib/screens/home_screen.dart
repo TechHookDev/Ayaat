@@ -348,33 +348,59 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildLanguageSection(
-                    language: 'العربية',
-                    verse: _currentVerses?['arabic'],
-                    textDirection: TextDirection.rtl,
-                    fontFamily: 'Amiri',
-                    fontSize: 24,
-                    reference: _currentVerses?['arabic']?.arabicReference ?? '',
-                  ),
-                  const Divider(color: Colors.white24, height: 32),
-                  _buildLanguageSection(
-                    language: 'English',
-                    verse: _currentVerses?['english'],
-                    textDirection: TextDirection.ltr,
-                    fontFamily: 'Outfit',
-                    fontSize: 18,
-                    reference:
-                        _currentVerses?['english']?.englishReference ?? '',
-                  ),
-                  const Divider(color: Colors.white24, height: 32),
-                  _buildLanguageSection(
-                    language: 'Français',
-                    verse: _currentVerses?['french'],
-                    textDirection: TextDirection.ltr,
-                    fontFamily: 'Outfit',
-                    fontSize: 18,
-                    reference: _currentVerses?['french']?.frenchReference ?? '',
-                  ),
+                  ...() {
+                    final sections = [
+                      MapEntry(
+                        AppLanguage.arabic,
+                        _buildLanguageSection(
+                          language: 'العربية',
+                          verse: _currentVerses?['arabic'],
+                          textDirection: TextDirection.rtl,
+                          fontFamily: 'Amiri',
+                          fontSize: 24,
+                          reference: _currentVerses?['arabic']?.arabicReference ?? '',
+                        ),
+                      ),
+                      MapEntry(
+                        AppLanguage.english,
+                        _buildLanguageSection(
+                          language: 'English',
+                          verse: _currentVerses?['english'],
+                          textDirection: TextDirection.ltr,
+                          fontFamily: 'Outfit',
+                          fontSize: 18,
+                          reference: _currentVerses?['english']?.englishReference ?? '',
+                        ),
+                      ),
+                      MapEntry(
+                        AppLanguage.french,
+                        _buildLanguageSection(
+                          language: 'Français',
+                          verse: _currentVerses?['french'],
+                          textDirection: TextDirection.ltr,
+                          fontFamily: 'Outfit',
+                          fontSize: 18,
+                          reference: _currentVerses?['french']?.frenchReference ?? '',
+                        ),
+                      ),
+                    ];
+
+                    // Sort: Selected language first, then others
+                    sections.sort((a, b) {
+                      if (a.key == _currentLanguage) return -1;
+                      if (b.key == _currentLanguage) return 1;
+                      return 0;
+                    });
+
+                    final List<Widget> widgets = [];
+                    for (int i = 0; i < sections.length; i++) {
+                      widgets.add(sections[i].value);
+                      if (i < sections.length - 1) {
+                        widgets.add(const Divider(color: Colors.white24, height: 32));
+                      }
+                    }
+                    return widgets;
+                  }(),
                 ],
               ),
             ),

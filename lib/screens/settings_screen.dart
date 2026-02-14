@@ -250,7 +250,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   _currentLanguage == AppLanguage.arabic
                       ? 'جاري تحديد الموقع وحساب الأوقات...'
-                      : 'Locating and calculating times...',
+                      : _currentLanguage == AppLanguage.french
+                          ? 'Localisation et calcul des horaires...'
+                          : 'Locating and calculating times...',
                   style: GoogleFonts.amiri(color: Colors.white),
                 ),
               ),
@@ -288,7 +290,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                  content: Text(
                    _currentLanguage == AppLanguage.arabic
                      ? 'تعذر تفعيل أوقات الصلاة. يرجى التحقق من إعدادات الموقع.'
-                     : 'Could not enable prayer times. Please check location permissions.',
+                     : _currentLanguage == AppLanguage.french
+                       ? 'Impossible d\'activer les heures de prière. Veuillez vérifier les paramètres de localisation.'
+                       : 'Could not enable prayer times. Please check location permissions.',
                    style: GoogleFonts.amiri(color: Colors.white),
                  ),
                  backgroundColor: Colors.redAccent,
@@ -309,7 +313,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                  content: Text(
                    _currentLanguage == AppLanguage.arabic
                      ? 'تم تفعيل أوقات الصلاة بنجاح'
-                     : 'Prayer times enabled successfully',
+                     : _currentLanguage == AppLanguage.french
+                       ? 'Heures de prière activées avec succès'
+                       : 'Prayer times enabled successfully',
                    style: GoogleFonts.amiri(color: Colors.white),
                  ),
                  backgroundColor: const Color(0xFF0D1B2A),
@@ -642,7 +648,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           _currentLanguage == AppLanguage.arabic
                               ? 'سيتم إرسال التنبيهات بعد 30 دقيقة من مواقيت الصلاة أدناه'
-                              : 'Notifications will be sent 30 minutes after the prayer times below',
+                              : _currentLanguage == AppLanguage.french
+                                  ? 'Les notifications seront envoyées 30 minutes après les heures de prière ci-dessous'
+                                  : 'Notifications will be sent 30 minutes after the prayer times below',
                           style: GoogleFonts.amiri(
                             fontSize: 14,
                             color: Colors.white70,
