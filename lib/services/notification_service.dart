@@ -112,7 +112,7 @@ class NotificationService {
     } else if (Platform.isIOS) {
       final iosPlugin =
           _notifications.resolvePlatformSpecificImplementation<
-            DarwinFlutterLocalNotificationsPlugin
+            IOSFlutterLocalNotificationsPlugin
           >();
       final granted =
           await iosPlugin?.requestPermissions(
