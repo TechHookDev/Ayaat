@@ -485,15 +485,6 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _buildActionButton(
-            icon: Icons.refresh,
-            label: _getNewVerseText(),
-            onPressed: () async {
-              await _notificationService.clearNotificationVerse();
-              _loadRandomVerses();
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildActionButton(
             icon: Icons.menu_book,
             label: _getContinueReadingText(),
             onPressed: () {
@@ -510,6 +501,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
               }
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildActionButton(
+            icon: Icons.refresh,
+            label: _getNewVerseText(),
+            onPressed: () async {
+              await _notificationService.clearNotificationVerse();
+              _loadRandomVerses();
             },
           ),
         ],

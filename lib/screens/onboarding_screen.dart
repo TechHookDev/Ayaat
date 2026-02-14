@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
@@ -27,11 +28,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<TimeOfDay> _notificationTimes = [];
   bool _isLoadingLocation = false;
   String? _locationError;
+  
+  // For animated "Next" button on first page
+  Timer? _nextButtonTimer;
+  String _animatedNextLabel = 'التالي';
+  int _animatedLabelIndex = 0;
+  final List<String> _nextLabels = ['التالي', 'Next', 'Suivant'];
 
   @override
   void initState() {
     super.initState();
-    // Don't initialize with default time - let user choose
+    _startNextButtonAnimation();
+  }
+
+  void _startNextButtonAnimation() {
+    _nextButtonTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_currentPage == 0) {
+        setState(() {
+          _animatedLabelIndex = (_animatedLabelIndex + 1) % _nextLabels.length;
+          _animatedNextLabel = _nextLabels[_animatedLabelIndex];
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _nextButtonTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _nextPage() async {
@@ -383,9 +408,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             textAlign: TextAlign.center,
             textDirection: TextDirection.rtl,
           ),
-          const SizedBox(height: 16),
           Text(
             'Daily Quran verses with optional daily reminders',
+            style: GoogleFonts.outfit(fontSize: 14, color: Colors.white54),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Versets quotidiens du Coran avec rappels facultatifs',
             style: GoogleFonts.outfit(fontSize: 14, color: Colors.white54),
             textAlign: TextAlign.center,
           ),
@@ -501,7 +531,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 40),
           Text(
-            'التنبيهات',
+            _getNotificationTitle(),
             style: GoogleFonts.amiri(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -510,7 +540,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Notifications',
+            _getNotificationSubtitle(),
             style: GoogleFonts.outfit(fontSize: 14, color: Colors.white54),
           ),
           const SizedBox(height: 40),
@@ -524,23 +554,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Column(
               children: [
                 Text(
-                  'هل تريد تلقي تنبيهات يومية بآيات من القرآن الكريم؟',
+                  _getNotificationDescription(),
                   style: GoogleFonts.amiri(
                     fontSize: 18,
                     color: Colors.white,
                     height: 1.5,
                   ),
                   textAlign: TextAlign.center,
-                  textDirection: TextDirection.rtl,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Would you like to receive daily Quran verse reminders?',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    color: Colors.white54,
-                  ),
-                  textAlign: TextAlign.center,
+                  textDirection: _selectedLanguage == AppLanguage.arabic
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
                 ),
                 const SizedBox(height: 30),
                 Row(
@@ -800,7 +823,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const Icon(Icons.access_time, size: 60, color: Color(0xFFFFD700)),
           const SizedBox(height: 30),
           Text(
-            'مواعيد التنبيهات',
+            _getNotificationTimesTitle(),
             style: GoogleFonts.amiri(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -809,15 +832,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Notification Times',
+            _getNotificationTimesSubtitle(),
             style: GoogleFonts.outfit(fontSize: 12, color: Colors.white54),
           ),
           const SizedBox(height: 20),
           Text(
-            'كم مرة تريد أن تتلقى التنبيهات في اليوم؟',
+            _getNotificationTimesDescription(),
             style: GoogleFonts.amiri(fontSize: 16, color: Colors.white70),
             textAlign: TextAlign.center,
-            textDirection: TextDirection.rtl,
+            textDirection: _selectedLanguage == AppLanguage.arabic
+                ? TextDirection.rtl
+                : TextDirection.ltr,
           ),
           const SizedBox(height: 16),
           // Notification count selector
@@ -881,7 +906,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'الأوقات / Times',
+                    _getTimesLabel(),
                     style: GoogleFonts.amiri(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -918,12 +943,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                           ),
                           title: Text(
-                            'التنبيه ${index + 1}',
+                            '${_getNotificationText()} ${index + 1}',
                             style: GoogleFonts.amiri(
                               fontSize: 14,
                               color: Colors.white,
                             ),
-                            textDirection: TextDirection.rtl,
+                            textDirection: _selectedLanguage == AppLanguage.arabic
+                                ? TextDirection.rtl
+                                : TextDirection.ltr,
                           ),
                           trailing: InkWell(
                             onTap: () => _selectTime(index),
@@ -1094,11 +1121,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Text(
-                    buttonText,
-                    style: GoogleFonts.amiri(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Text(
+                      _currentPage == 0 ? _animatedNextLabel : buttonText,
+                      key: ValueKey(_currentPage == 0 ? _animatedNextLabel : buttonText),
+                      style: GoogleFonts.amiri(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -1314,6 +1345,94 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return 'Confirm';
       case AppLanguage.french:
         return 'Confirmer';
+    }
+  }
+
+  String _getNotificationTitle() {
+    switch (_selectedLanguage) {
+      case AppLanguage.arabic:
+        return 'التنبيهات';
+      case AppLanguage.english:
+        return 'Notifications';
+      case AppLanguage.french:
+        return 'Notifications';
+    }
+  }
+
+  String _getNotificationSubtitle() {
+    switch (_selectedLanguage) {
+      case AppLanguage.arabic:
+        return 'التنبيهات اليومية';
+      case AppLanguage.english:
+        return 'Daily Notifications';
+      case AppLanguage.french:
+        return 'Notifications quotidiennes';
+    }
+  }
+
+  String _getNotificationDescription() {
+    switch (_selectedLanguage) {
+      case AppLanguage.arabic:
+        return 'هل تريد تلقي تنبيهات يومية بآيات من القرآن الكريم؟';
+      case AppLanguage.english:
+        return 'Would you like to receive daily Quran verse reminders?';
+      case AppLanguage.french:
+        return 'Souhaitez-vous recevoir des rappels quotidiens de versets du Coran ?';
+    }
+  }
+
+  String _getNotificationTimesTitle() {
+    switch (_selectedLanguage) {
+      case AppLanguage.arabic:
+        return 'مواعيد التنبيهات';
+      case AppLanguage.english:
+        return 'Notification Times';
+      case AppLanguage.french:
+        return 'Heures de notification';
+    }
+  }
+
+  String _getNotificationTimesSubtitle() {
+    switch (_selectedLanguage) {
+      case AppLanguage.arabic:
+        return 'تحديد الأوقات';
+      case AppLanguage.english:
+        return 'Select Times';
+      case AppLanguage.french:
+        return 'Sélectionner les heures';
+    }
+  }
+
+  String _getNotificationTimesDescription() {
+    switch (_selectedLanguage) {
+      case AppLanguage.arabic:
+        return 'كم مرة تريد أن تتلقى التنبيهات في اليوم؟';
+      case AppLanguage.english:
+        return 'How many times per day would you like to receive notifications?';
+      case AppLanguage.french:
+        return 'Combien de fois par jour souhaitez-vous recevoir des notifications ?';
+    }
+  }
+
+  String _getTimesLabel() {
+    switch (_selectedLanguage) {
+      case AppLanguage.arabic:
+        return 'الأوقات';
+      case AppLanguage.english:
+        return 'Times';
+      case AppLanguage.french:
+        return 'Horaires';
+    }
+  }
+
+  String _getNotificationText() {
+    switch (_selectedLanguage) {
+      case AppLanguage.arabic:
+        return 'التنبيه';
+      case AppLanguage.english:
+        return 'Notification';
+      case AppLanguage.french:
+        return 'Notification';
     }
   }
 
