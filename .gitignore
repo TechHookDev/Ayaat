@@ -25,6 +25,15 @@ migrate_working_dir/
 
 # Flutter/Dart/Pub related
 **/doc/api/
+# iOS Certificate files
+ios_distribution.key
+ios_distribution.csr
+ios_distribution.pem
+ios_distribution.p12
+distribution.cer
+dist_cert.cer
+ios_distribution_profile.mobileprovision
+Ayaat_App_Store_Profile.mobileprovision
 **/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins-dependencies
