@@ -49,5 +49,9 @@
 	<string>This app needs access to location to calculate accurate prayer times.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app needs access to location to calculate accurate prayer times.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to location to calculate accurate prayer times.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
