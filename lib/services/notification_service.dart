@@ -11,6 +11,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:adhan/adhan.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/notification_verse.dart';
+import '../models/verse.dart';
 import 'language_service.dart';
 import 'quran_api.dart';
 
@@ -59,6 +60,7 @@ class NotificationService {
   static const String _notificationVerseKey = 'notification_verse';
   static const String _notificationModeKey = 'notification_mode'; // 'manual' or 'prayer'
   static const int _baseNotificationId = 1000;
+  static const int _daysToSchedule = 30;
 
   /// Initialize the notification service (without requesting permissions)
   Future<void> initialize() async {
@@ -290,7 +292,45 @@ class NotificationService {
     return null;
   }
 
-  /// Schedule multiple daily notifications at specified times
+  /// Check and reschedule notifications if needed (e.g. on app start)
+  Future<void> rescheduleNotifications() async {
+     final prefs = await SharedPreferences.getInstance();
+     final enabled = prefs.getBool(_notificationsEnabledKey) ?? false;
+     if (!enabled) return;
+
+     final timesJson = prefs.getString(_notificationTimesKey);
+     if (timesJson == null) return;
+
+      try {
+      final List<dynamic> decoded = jsonDecode(timesJson);
+      final times =  decoded
+          .map(
+            (t) =>
+                TimeOfDay(hour: t['hour'] as int, minute: t['minute'] as int),
+          )
+          .toList();
+
+      // For now, naive approach: just reschedule everything to replenish the 30 days
+      // A better optimization would be to check pending notifications count.
+      final pendingNotifications = await _notifications.pendingNotificationRequests();
+      
+      // If we have less than 5 days worth of notifications, top up.
+      // Assuming 1 notification per day = 5 notifications.
+      final minRequired = times.length * 5; 
+      
+      if (pendingNotifications.length < minRequired) {
+         debugPrint('Replenishing scheduled notifications...');
+         await scheduleMultipleDaily(times);
+      } else {
+        debugPrint('Notifications Schedule is healthy: ${pendingNotifications.length} pending.');
+      }
+
+    } catch (e) {
+      debugPrint('Error checking reschedule: $e');
+    }
+  }
+
+  /// Schedule multiple daily notifications at specified times for the next 30 days
   Future<bool> scheduleMultipleDaily(List<TimeOfDay> times) async {
     // Check notification permission first
     if (Platform.isAndroid) {
@@ -326,7 +366,7 @@ class NotificationService {
       }
     }
     
-     debugPrint('Scheduling ${times.length} notifications.');
+     debugPrint('Scheduling notifications for the next $_daysToSchedule days.');
 
     final prefs = await SharedPreferences.getInstance();
 
@@ -337,62 +377,84 @@ class NotificationService {
     await prefs.setString(_notificationTimesKey, jsonEncode(timesJson));
     await prefs.setBool(_notificationsEnabledKey, true);
 
-    // Cancel any existing scheduled notifications
+    // Cancel all existing to avoid duplicates or mess
     await _notifications.cancelAll();
 
-    // Schedule each notification
-    for (int i = 0; i < times.length; i++) {
-      await _scheduleSingleNotification(
-        id: _baseNotificationId + i,
-        hour: times[i].hour,
-        minute: times[i].minute,
-      );
+    // Schedule for the next 30 days
+    final langService = LanguageService();
+    final currentLanguage = await langService.getCurrentLanguage();
+    
+    // Create a Set to ensure uniqueness within this batch
+    final Set<int> scheduledVerseIds = {};
+    
+    // Pre-fetech verses could be slow, so we do it in the loop
+    // But to ensure we are not blocking excessively, we might need to yield?
+    
+    for (int day = 0; day < _daysToSchedule; day++) {
+       for (int i = 0; i < times.length; i++) {
+        final notificationId = _baseNotificationId + (day * 100) + i; // Unique ID per day per time
+        
+        // Get a random verse
+        Verse? verse;
+        int attempts = 0;
+        
+        // Try to find a verse we haven't scheduled in this batch
+        while (attempts < 5) {
+           // Small delay to prevent UI freeze if valid
+           await Future.delayed(Duration(milliseconds: 10));
+           final v = await _quranApi.getRandomVerse(language: currentLanguage);
+           if (!scheduledVerseIds.contains(v.number)) {
+             verse = v;
+             scheduledVerseIds.add(v.number);
+             break;
+           }
+           attempts++;
+        }
+        // Fallback if we couldn't find unique
+        verse ??= await _quranApi.getRandomVerse(language: currentLanguage);
+
+        await _scheduleSingleNotification(
+          id: notificationId,
+          verse: verse,
+          hour: times[i].hour,
+          minute: times[i].minute,
+          daysAhead: day,
+        );
+      }
     }
 
-    debugPrint('Scheduled ${times.length} daily notifications');
+    debugPrint('Scheduled notifications for $_daysToSchedule days');
     return true;
   }
 
-  /// Schedule a single daily notification
+  /// Schedule a single notification for a specific day in the future
   Future<void> _scheduleSingleNotification({
     required int id,
+    required Verse verse,
     required int hour,
     required int minute,
+    required int daysAhead,
   }) async {
     try {
-      final langService = LanguageService();
-      final currentLanguage = await langService.getCurrentLanguage();
-      final verse = await _quranApi.getRandomVerse(language: currentLanguage);
-
-      // Store verse data for when user taps notification
-      final notificationVerse = NotificationVerse(
-        number: verse.number,
-        text: verse.text,
-        surahName: verse.surahName,
-        surahEnglishName: verse.surahEnglishName,
-        surahNumber: verse.surahNumber,
-        numberInSurah: verse.numberInSurah,
-        language: currentLanguage.code,
-      );
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        _notificationVerseKey,
-        jsonEncode(notificationVerse.toJson()),
-      );
+      
+      // Calculate date: Today + daysAhead
+      var scheduledDate = _nextInstanceOfTime(hour, minute);
+      if (daysAhead > 0) {
+        scheduledDate = scheduledDate.add(Duration(days: daysAhead));
+      }
 
       await _notifications.zonedSchedule(
         id: id,
         title: 'آيات - Ayaat',
-        body: verse.text, // Ensure this body is not empty
-        scheduledDate: _nextInstanceOfTime(hour, minute),
+        body: verse.text,
+        scheduledDate: scheduledDate,
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            'ayaat_daily_v2', // Changed channel ID
+            'ayaat_daily_v2', 
             'Daily Quran Verse',
             channelDescription: 'Daily Quran verse notifications',
-            importance: Importance.max, // High importance
-            priority: Priority.max, // High priority
+            importance: Importance.max,
+            priority: Priority.max,
             styleInformation: BigTextStyleInformation(
               verse.text,
               contentTitle: 'آيات - Ayaat',
@@ -406,11 +468,11 @@ class NotificationService {
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.alarmClock,
-        matchDateTimeComponents: DateTimeComponents.time,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
         payload: verse.number.toString(),
       );
 
-      debugPrint('Notification $id scheduled for $hour:$minute');
     } catch (e) {
       debugPrint('Error scheduling notification $id: $e');
     }
@@ -518,23 +580,6 @@ class NotificationService {
       final langService = LanguageService();
       final currentLanguage = await langService.getCurrentLanguage();
       final verse = await _quranApi.getRandomVerse(language: currentLanguage);
-
-      // Store verse data for when user taps notification
-      final notificationVerse = NotificationVerse(
-        number: verse.number,
-        text: verse.text,
-        surahName: verse.surahName,
-        surahEnglishName: verse.surahEnglishName,
-        surahNumber: verse.surahNumber,
-        numberInSurah: verse.numberInSurah,
-        language: currentLanguage.code,
-      );
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        _notificationVerseKey,
-        jsonEncode(notificationVerse.toJson()),
-      );
 
       await _notifications.show(
         id: 99, // Different ID for test notifications

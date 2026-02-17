@@ -54,6 +54,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     super.initState();
     _checkAppState();
     _setupNotificationListener();
+    _notificationService.rescheduleNotifications();
   }
 
   void _setupNotificationListener() {
