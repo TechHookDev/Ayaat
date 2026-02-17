@@ -84,7 +84,7 @@ class NotificationService {
     );
 
     await _notifications.initialize(
-      initSettings,
+      initializationSettings: initSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
   }
@@ -444,11 +444,11 @@ class NotificationService {
       }
 
       await _notifications.zonedSchedule(
-        id,
-        'آيات - Ayaat',
-        verse.text,
-        scheduledDate,
-        NotificationDetails(
+        id: id,
+        title: 'آيات - Ayaat',
+        body: verse.text,
+        scheduledDate: scheduledDate,
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             'ayaat_daily_v2', 
             'Daily Quran Verse',
@@ -579,10 +579,10 @@ class NotificationService {
       final verse = await _quranApi.getRandomVerse(language: currentLanguage);
 
       await _notifications.show(
-        99, // Different ID for test notifications
-        'آيات - Ayaat',
-        verse.text,
-        NotificationDetails(
+        id: 99, // Different ID for test notifications
+        title: 'آيات - Ayaat',
+        body: verse.text,
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             'ayaat_daily_v2', // Updated to match new channel ID
             'Daily Quran Verse',
