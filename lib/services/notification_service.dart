@@ -84,7 +84,7 @@ class NotificationService {
     );
 
     await _notifications.initialize(
-      initializationSettings: initSettings,
+      initSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
   }
