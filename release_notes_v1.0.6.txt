@@ -1,29 +1,8 @@
 en-US
-What's New in v1.0.6
-
-- Travel Auto-Update: Automatically updates prayer times when you travel to a new city (on app launch).
-- Fix: Resolved app hang/freeze during setup and onboarding.
-- Fix: "Prayer Times" settings no longer crash or show an empty list.
-- Fix: Notifications now schedule instantly without delay.
-- Performance: Significantly improved background scheduling speed and reliability.
-- Fix: Resolved API connection issues (Rate Limiting).
+Bug fixes
 
 ar-SA
-ما الجديد في الإصدار 1.0.6
-
-- التحديث التلقائي أثناء السفر: يقوم التطبيق الآن بتحديث مواقيت الصلاة تلقائيًا عند السفر إلى مدينة جديدة (عند فتح التطبيق).
-- إصلاح: حل مشكلة تهنيج التطبيق أثناء الإعداد الأولي.
-- إصلاح: إعدادات "مواقيت الصلاة" تعمل الآن بسلاسة وتظهر الأوقات فورًا.
-- إصلاح: الإشعارات تتم جدولتها فورًا دون تأخير.
-- تحسين الأداء: تحسين كبير في سرعة وموثوقية جدولة الإشعارات في الخلفية.
-- إصلاح: حل مشاكل الاتصال بالخادم.
+إصلاحات الأخطاء
 
 fr-FR
-Nouveautés de la version 1.0.6
-
-- Mise à jour automatique en voyage : L'application met désormais automatiquement à jour les horaires de prière lorsque vous changez de ville (au lancement de l'application).
-- Correctif : Résolution du blocage de l'application lors de la configuration initiale.
-- Correctif : Les paramètres "Horaires de Prière" fonctionnent désormais parfaitement et s'affichent instantanément.
-- Correctif : Les notifications sont programmées instantanément sans délai.
-- Performance : Amélioration significative de la vitesse et de la fiabilité de la planification en arrière-plan.
-- Correctif : Résolution des problèmes de connexion au serveur.
+Corrections de bugs
