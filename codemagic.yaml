@@ -1,0 +1,34 @@
+workflows:
+  android-release:
+    name: Android Release & Publish
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      groups:
+        - google_play # Define this group in Codemagic UI with GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        - android_signing # Define this group with CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
+      flutter: stable
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+      
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      
+      - name: Build Android App Bundle
+        script: |
+          flutter build appbundle --release
+    
+    artifacts:
+      - build/app/outputs/bundle/release/app-release.aab
+      - build/app/outputs/mapping/release/mapping.txt
+    
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal # or 'production', 'alpha', 'beta'
+        submit_as_draft: true
+        # release_notes: # You can map release notes here if you have separate files
+        #   - path: release_notes_v1.0.6.txt

@@ -1,5 +1,18 @@
 # Ayaat (آيات) - Daily Quranic Verses
 
+## Automatic Release Notes (Codemagic)
+
+To push release notes to Google Play automatically:
+
+1.  **Configure Codemagic**: Set up `GCLOUD_SERVICE_ACCOUNT_CREDENTIALS` and `CM_KEYSTORE` variables in Codemagic UI.
+2.  **Prepare Notes**: Edit `release_notes_v1.0.6.txt` (or latest version).
+3.  **Run Splitter**:
+    ```bash
+    python3 split_release_notes.py
+    ```
+    This creates the `android/fastlane/metadata` folder structure required by Google Play.
+4.  **Push**: Commit and push the changes. Codemagic will pick up the files in `fastlane/metadata` and upload them during the `google_play` step.
+
 <div align="center">
   <img src="assets/icon.png" alt="Ayaat App Icon" width="120">
   <br><br>
