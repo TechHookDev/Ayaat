@@ -54,7 +54,10 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     super.initState();
     _checkAppState();
     _setupNotificationListener();
-    _notificationService.rescheduleNotifications();
+    // Use delay on startup to allow UI to render first
+    _notificationService.rescheduleNotifications(useDelay: true);
+    // Check for travel updates (smart location check)
+    _notificationService.checkLocationAndUpdate();
   }
 
   void _setupNotificationListener() {

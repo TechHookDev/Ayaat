@@ -84,7 +84,7 @@ class NotificationService {
     );
 
     await _notifications.initialize(
-      settings: initSettings,
+      initSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
   }
@@ -146,8 +146,11 @@ class NotificationService {
     return ExactAlarmPermissionStatus.denied;
   }
 
+  static const String _lastKnownLatKey = 'last_known_lat';
+  static const String _lastKnownLngKey = 'last_known_lng';
+
   /// Schedule notifications based on prayer times
-  Future<List<TimeOfDay>?> schedulePrayerTimes() async {
+  Future<List<TimeOfDay>?> schedulePrayerTimes({bool useDelay = false}) async {
     // Check notification permission first
     if (Platform.isAndroid) {
       final androidPlugin =
@@ -187,6 +190,11 @@ class NotificationService {
         return null;
       }
 
+      // Save valid location for future travel checks
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_lastKnownLatKey, position.latitude);
+      await prefs.setDouble(_lastKnownLngKey, position.longitude);
+
       final myCoordinates = Coordinates(position.latitude, position.longitude);
       final params = CalculationMethod.muslim_world_league.getParameters();
       params.madhab = Madhab.shafi;
@@ -211,16 +219,67 @@ class NotificationService {
       debugPrint('Scheduling prayer times (with +30min offset): $times');
       
       // Save mode
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_notificationModeKey, 'prayer');
       
-      // Reuse existing logic to schedule these times
-      final success = await scheduleMultipleDaily(times);
-      return success ? times : null;
+      // Fire and forget scheduling (don't block UI)
+      scheduleMultipleDaily(times, useDelay: useDelay).then((success) {
+        if (!success) debugPrint('Background scheduling failed');
+      });
+
+      // Return times immediately so UI updates
+      return times;
 
     } catch (e) {
       debugPrint('Error scheduling prayer times: $e');
       return null;
+    }
+  }
+
+  /// Check if location has changed significantly (>10km) and update prayer times if so
+  Future<void> checkLocationAndUpdate() async {
+    try {
+      final mode = await getNotificationMode();
+      if (mode != 'prayer') return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final lastLat = prefs.getDouble(_lastKnownLatKey);
+      final lastLng = prefs.getDouble(_lastKnownLngKey);
+
+      if (lastLat == null || lastLng == null) return;
+
+      debugPrint('Checking for location change (Travel Auto-Update)...');
+
+      // Get current location with low accuracy (fast & battery efficient)
+      // We don't use _determinePosition here because we want to be very gentle
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
+
+      final currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 5),
+      );
+
+      final distanceInMeters = Geolocator.distanceBetween(
+        lastLat,
+        lastLng,
+        currentPosition.latitude,
+        currentPosition.longitude,
+      );
+
+      debugPrint('Distance from last location: ${distanceInMeters.toStringAsFixed(0)} meters');
+
+      // If moved more than 10km (10,000 meters)
+      if (distanceInMeters > 10000) {
+        debugPrint('Significant location change detected. Updating prayer times...');
+        await schedulePrayerTimes(useDelay: false); // Update immediately
+      } else {
+        debugPrint('Location unchanged or movement insignificant.');
+      }
+    } catch (e) {
+      debugPrint('Error checking location update: $e');
     }
   }
 
@@ -243,6 +302,7 @@ class NotificationService {
     // Test if location services are enabled.
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      debugPrint('Location services are disabled.');
       return null;
     }
 
@@ -250,15 +310,49 @@ class NotificationService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
+        debugPrint('Location permission denied.');
         return null;
       }
     }
     
     if (permission == LocationPermission.deniedForever) {
+      debugPrint('Location permission denied forever.');
       return null;
     } 
 
-    return await Geolocator.getCurrentPosition();
+    // 1. Try last known position (fastest)
+    try {
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        debugPrint('Using last known position: $lastKnown');
+        return lastKnown;
+      }
+    } catch (e) {
+      debugPrint('Error getting last known position: $e');
+    }
+
+    // 2. Try current position with low accuracy (faster)
+    try {
+      debugPrint('Getting current position (low accuracy)...');
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('Error getting low accuracy position: $e');
+      
+      // 3. Retry with high accuracy if low failed (maybe needs GPS)
+      try {
+        debugPrint('Retrying with high accuracy...');
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
+        );
+      } catch (e) {
+        debugPrint('Error getting high accuracy position: $e');
+        return null;
+      }
+    }
   }
 
   void _onNotificationTapped(NotificationResponse response) {
@@ -293,7 +387,7 @@ class NotificationService {
   }
 
   /// Check and reschedule notifications if needed (e.g. on app start)
-  Future<void> rescheduleNotifications() async {
+  Future<void> rescheduleNotifications({bool useDelay = false}) async {
      final prefs = await SharedPreferences.getInstance();
      final enabled = prefs.getBool(_notificationsEnabledKey) ?? false;
      if (!enabled) return;
@@ -320,7 +414,7 @@ class NotificationService {
       
       if (pendingNotifications.length < minRequired) {
          debugPrint('Replenishing scheduled notifications...');
-         await scheduleMultipleDaily(times);
+         await scheduleMultipleDaily(times, useDelay: useDelay);
       } else {
         debugPrint('Notifications Schedule is healthy: ${pendingNotifications.length} pending.');
       }
@@ -331,7 +425,12 @@ class NotificationService {
   }
 
   /// Schedule multiple daily notifications at specified times for the next 30 days
-  Future<bool> scheduleMultipleDaily(List<TimeOfDay> times) async {
+  Future<bool> scheduleMultipleDaily(List<TimeOfDay> times, {bool useDelay = false}) async {
+    // delay to let the app load first if requested
+    if (useDelay) {
+      await Future.delayed(const Duration(seconds: 5));
+    }
+
     // Check notification permission first
     if (Platform.isAndroid) {
       final androidPlugin =
@@ -366,7 +465,7 @@ class NotificationService {
       }
     }
     
-     debugPrint('Scheduling notifications for the next $_daysToSchedule days.');
+    debugPrint('Scheduling notifications for the next $_daysToSchedule days.');
 
     final prefs = await SharedPreferences.getInstance();
 
@@ -387,44 +486,63 @@ class NotificationService {
     // Create a Set to ensure uniqueness within this batch
     final Set<int> scheduledVerseIds = {};
     
-    // Pre-fetech verses could be slow, so we do it in the loop
-    // But to ensure we are not blocking excessively, we might need to yield?
+    // Optimize: Fetch verses in batches to avoid network starvation
+    // We need _daysToSchedule * times.length verses
+    final totalVersesNeeded = _daysToSchedule * times.length;
+    final batchSize = 3; // Reduced from 5 to avoid 429
+    // Removed: final List<Verse> verses = []; 
     
-    for (int day = 0; day < _daysToSchedule; day++) {
-       for (int i = 0; i < times.length; i++) {
-        final notificationId = _baseNotificationId + (day * 100) + i; // Unique ID per day per time
+    debugPrint('Fetching and scheduling $totalVersesNeeded verses in batches of $batchSize...');
+    
+    int currentVerseIndex = 0;
+
+    try {
+      for (int i = 0; i < totalVersesNeeded; i += batchSize) {
+        final remaining = totalVersesNeeded - i;
+        final currentBatchSize = remaining < batchSize ? remaining : batchSize;
         
-        // Get a random verse
-        Verse? verse;
-        int attempts = 0;
-        
-        // Try to find a verse we haven't scheduled in this batch
-        while (attempts < 5) {
-           // Small delay to prevent UI freeze if valid
-           await Future.delayed(Duration(milliseconds: 10));
-           final v = await _quranApi.getRandomVerse(language: currentLanguage);
-           if (!scheduledVerseIds.contains(v.number)) {
-             verse = v;
-             scheduledVerseIds.add(v.number);
-             break;
-           }
-           attempts++;
+        final List<Future<Verse>> batchFutures = [];
+        for (int j = 0; j < currentBatchSize; j++) {
+           batchFutures.add(_quranApi.getRandomVerse(language: currentLanguage));
         }
-        // Fallback if we couldn't find unique
-        verse ??= await _quranApi.getRandomVerse(language: currentLanguage);
+        
+        // Wait for batch
+        final batchVerses = await Future.wait(batchFutures);
+        // Removed: verses.addAll(batchVerses);
 
-        await _scheduleSingleNotification(
-          id: notificationId,
-          verse: verse,
-          hour: times[i].hour,
-          minute: times[i].minute,
-          daysAhead: day,
-        );
+        // Schedule IMMEDIATELY after fetching this batch
+        for (final verse in batchVerses) {
+          final day = currentVerseIndex ~/ times.length;
+          final timeIndex = currentVerseIndex % times.length;
+          final time = times[timeIndex];
+          
+          final notificationId = _baseNotificationId + (day * 100) + timeIndex;
+          
+          await _scheduleSingleNotification(
+            id: notificationId,
+            verse: verse,
+            hour: time.hour,
+            minute: time.minute,
+            daysAhead: day,
+          );
+          
+          currentVerseIndex++;
+        }
+        
+        debugPrint('Scheduled verses up to index $currentVerseIndex / $totalVersesNeeded');
+        
+        // Larger delay between batches to respect rate limits
+        // EXCEPT for the last batch to finish faster? No, consistent pacing is safer.
+        await Future.delayed(const Duration(milliseconds: 2000)); 
       }
+      
+      debugPrint('Scheduled notifications for $_daysToSchedule days');
+      return true;
+      
+    } catch (e) {
+      debugPrint('Error during batch scheduling: $e');
+      return false;
     }
-
-    debugPrint('Scheduled notifications for $_daysToSchedule days');
-    return true;
   }
 
   /// Schedule a single notification for a specific day in the future
@@ -444,11 +562,11 @@ class NotificationService {
       }
 
       await _notifications.zonedSchedule(
-        id: id,
-        title: 'آيات - Ayaat',
-        body: verse.text,
-        scheduledDate: scheduledDate,
-        notificationDetails: NotificationDetails(
+        id,
+        'آيات - Ayaat',
+        verse.text,
+        scheduledDate,
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'ayaat_daily_v2', 
             'Daily Quran Verse',
@@ -468,6 +586,8 @@ class NotificationService {
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.alarmClock,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
         payload: verse.number.toString(),
       );
     } catch (e) {
@@ -579,10 +699,10 @@ class NotificationService {
       final verse = await _quranApi.getRandomVerse(language: currentLanguage);
 
       await _notifications.show(
-        id: 99, // Different ID for test notifications
-        title: 'آيات - Ayaat',
-        body: verse.text,
-        notificationDetails: NotificationDetails(
+        99, // Different ID for test notifications
+        'آيات - Ayaat',
+        verse.text,
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'ayaat_daily_v2', // Updated to match new channel ID
             'Daily Quran Verse',

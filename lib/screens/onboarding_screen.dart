@@ -169,9 +169,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
 
       print('🔴 Getting current position...');
-      // Get current position
+      // Get current position with timeout
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
       );
       print(
         '🔴 Position obtained: ${position.latitude}, ${position.longitude}',
@@ -189,9 +190,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       print('🔴 Success! Ready to navigate to confirmation page...');
       return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('🔴 ERROR: $e');
-      print('🔴 STACK TRACE: $stackTrace');
       setState(() {
         _locationError = '${_getLocationErrorText()}\nError: $e';
         _isLoadingLocation = false;
@@ -249,30 +249,41 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finishOnboarding() async {
-    // Save language preference
-    await _languageService.setLanguage(_selectedLanguage);
+    try {
+      // Save language preference
+      await _languageService.setLanguage(_selectedLanguage);
 
-    // Save notification preferences
-    if (_wantsNotifications && _notificationTimes.isNotEmpty) {
-      // Save notification mode explicitly
-      await _notificationService.setNotificationMode(
-        _usePrayerTimes ? 'prayer' : 'manual',
-      );
-      await _notificationService.scheduleMultipleDaily(_notificationTimes);
-    } else {
-      await _notificationService.cancelAll();
-    }
+      // Save notification preferences
+      if (_wantsNotifications && _notificationTimes.isNotEmpty) {
+        // Save notification mode explicitly
+        await _notificationService.setNotificationMode(
+          _usePrayerTimes ? 'prayer' : 'manual',
+        );
+        // Schedule in background - don't await to avoid blocking UI
+        _notificationService.scheduleMultipleDaily(_notificationTimes).catchError((e) {
+           debugPrint('Error scheduling notifications in background: $e');
+        });
+      } else {
+        await _notificationService.cancelAll();
+      }
 
-    // Mark onboarding as complete
-    await _notificationService.setOnboardingComplete(true);
+      // Mark onboarding as complete
+      await _notificationService.setOnboardingComplete(true);
 
-    // Clear notification verse so app starts on home screen, not verse detail
-    await _notificationService.clearNotificationVerse();
+      // Clear notification verse so app starts on home screen, not verse detail
+      await _notificationService.clearNotificationVerse();
 
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Error: $e')),
+         );
+       }
     }
   }
 
@@ -545,6 +556,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Expanded(
                 child: PageView(
                   controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(), // Disable swipe
                   onPageChanged: (index) {
                     setState(() {
                       _currentPage = index;

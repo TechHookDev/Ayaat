@@ -32,8 +32,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final enabled = await _notificationService.isEnabled();
     final times = await _notificationService.getScheduledTimes();
-    final language = await _languageService.getCurrentLanguage();
     final mode = await _notificationService.getNotificationMode();
+    final language = await _languageService.getCurrentLanguage();
+
+    debugPrint('Settings: _loadSettings - Enabled: $enabled, Mode: $mode, Times: $times');
 
     setState(() {
       _notificationsEnabled = enabled;
@@ -41,6 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _notificationMode = mode;
       _notificationTimes.clear();
       _prayerTimes.clear();
+      
       if (times.isNotEmpty) {
         if (mode == 'prayer') {
           _prayerTimes.addAll(times);
@@ -54,6 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _notificationTimes.add(const TimeOfDay(hour: 9, minute: 0));
       }
       _isLoading = false;
+      debugPrint('Settings: _loadSettings complete - _prayerTimes: $_prayerTimes');
     });
   }
 

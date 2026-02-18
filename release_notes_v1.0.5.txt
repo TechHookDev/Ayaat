@@ -1,0 +1,17 @@
+<en-US>
+Fixed an issue where random verses would repeat too frequently.
+Improved overall app stability and performance.
+Minor bug fixes and UI enhancements.
+</en-US>
+
+<ar>
+إصلاح مشكلة تكرار ظهور الآيات العشوائية بشكل متكرر.
+تحسين استقرار التطبيق والأداء العام.
+إصلاحات طفيفة وتحسينات في واجهة المستخدم.
+</ar>
+
+<fr-FR>
+Correction d'un problème de répétition fréquente des versets aléatoires.
+Amélioration de la stabilité et des performances globales de l'application.
+Corrections de bugs mineurs et améliorations de l'interface utilisateur.
+</fr-FR>

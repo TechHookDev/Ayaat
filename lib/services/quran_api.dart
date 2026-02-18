@@ -25,7 +25,7 @@ class QuranApiService {
 
     final url = Uri.parse('$_baseUrl/ayah/$ayahNumber/$edition');
 
-    try {
+    return _fetchWithRetry(() async {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -34,8 +34,28 @@ class QuranApiService {
       } else {
         throw Exception('Failed to load verse: ${response.statusCode}');
       }
-    } catch (e) {
-      throw Exception('Error fetching verse: $e');
+    });
+  }
+
+  /// Helper to retry async operations with exponential backoff
+  Future<T> _fetchWithRetry<T>(Future<T> Function() operation, {int retries = 3}) async {
+    int attempt = 0;
+    while (true) {
+      try {
+        return await operation();
+      } catch (e) {
+        if (e.toString().contains('429') || attempt >= retries) {
+          if (attempt >= retries) rethrow;
+          // If 429, wait longer
+          final delay = Duration(seconds: (pow(2, attempt).toInt() * 2)); 
+          print('Rate limit hit. Retrying in ${delay.inSeconds}s...');
+          await Future.delayed(delay);
+        } else {
+          // Other errors, standard backoff
+          await Future.delayed(Duration(seconds: pow(2, attempt).toInt()));
+        }
+        attempt++;
+      }
     }
   }
 
