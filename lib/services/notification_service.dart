@@ -249,6 +249,15 @@ class NotificationService {
 
       debugPrint('Checking for location change (Travel Auto-Update)...');
 
+      // Check exact alarm permission first (Android 14+)
+      if (Platform.isAndroid) {
+        final exactAlarmStatus = await requestExactAlarmsPermission();
+        if (exactAlarmStatus != ExactAlarmPermissionStatus.granted) {
+          debugPrint('Exact alarm permission revoked. Cannot auto-update prayer times.');
+          return;
+        }
+      }
+
       // Get current location with low accuracy (fast & battery efficient)
       // We don't use _determinePosition here because we want to be very gentle
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -554,11 +563,34 @@ class NotificationService {
     required int daysAhead,
   }) async {
     try {
-      
       // Calculate date: Today + daysAhead
-      var scheduledDate = _nextInstanceOfTime(hour, minute);
-      if (daysAhead > 0) {
-        scheduledDate = scheduledDate.add(Duration(days: daysAhead));
+      // FIX: Use _nextInstanceOfTime ONLY for finding the base time for "today" logic
+      // if we want to be strict. 
+      // ACTUALLY: The simplest way is to construct the date for Today, 
+      // check if it's passed (if so, it doesn't matter for daysAhead > 0, 
+      // but for daysAhead == 0 we might want to skip or show immediately? 
+      // The requirement is to schedule for future.
+      
+      final now = tz.TZDateTime.now(tz.local);
+      
+      // Target time for "Today"
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        hour,
+        minute,
+      );
+
+      // Add the days offset
+      scheduledDate = scheduledDate.add(Duration(days: daysAhead));
+
+      // If the resulting time is in the past, we shouldn't schedule it.
+      // (This happens if daysAhead=0 and the time has already passed today)
+      if (scheduledDate.isBefore(now)) {
+        // debugPrint('Skipping past time: $scheduledDate');
+        return; 
       }
 
       await _notifications.zonedSchedule(
