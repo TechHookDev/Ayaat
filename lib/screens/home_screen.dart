@@ -188,6 +188,9 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
         decoration: const BoxDecoration(
           color: Color(0xFF0D1B2A),
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
@@ -214,29 +217,38 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            _buildGuideItem(
-              Icons.local_fire_department,
-              Colors.orange,
-              isArabic ? 'زيارة يومية' : (isFrench ? 'Visite quotidienne' : 'Daily Visit'),
-              isArabic ? 'افتح المصحف يومياً (+50 XP)' : (isFrench ? 'Ouvrez le Mushaf chaque jour (+50 XP)' : 'Open the Mushaf daily (+50 XP)'),
-            ),
-            _buildGuideItem(
-              Icons.headset,
-              const Color(0xFFFFD700),
-              isArabic ? 'استماع للآيات' : (isFrench ? 'Écoute de versets' : 'Audio Engagement'),
-              isArabic ? 'استمع لآية كاملة (+5 XP)' : (isFrench ? 'Écoutez un verset complet (+5 XP)' : 'Listen to a full verse (+5 XP)'),
-            ),
-            _buildGuideItem(
-              Icons.bookmark,
-              Colors.blueAccent,
-              isArabic ? 'حفظ العلامات' : (isFrench ? 'Gestion des favoris' : 'Bookmarking'),
-              isArabic ? 'حفظ موضع القراءة (+10 XP)' : (isFrench ? 'Enregistrez votre position (+10 XP)' : 'Save your reading position (+10 XP)'),
-            ),
-            _buildGuideItem(
-              Icons.stars,
-              const Color(0xFFFFD700),
-              isArabic ? 'إتمام السورة' : (isFrench ? 'Achèvement de sourate' : 'Surah Completion'),
-              isArabic ? 'الاستماع لنهاية السورة (+50 XP)' : (isFrench ? 'Ecoutez jusqu\'à la fin (+50 XP)' : 'Finish audio for a full Surah (+50 XP)'),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildGuideItem(
+                      Icons.local_fire_department,
+                      Colors.orange,
+                      isArabic ? 'زيارة يومية' : (isFrench ? 'Visite quotidienne' : 'Daily Visit'),
+                      isArabic ? 'افتح المصحف يومياً (+50 XP)' : (isFrench ? 'Ouvrez le Mushaf chaque jour (+50 XP)' : 'Open the Mushaf daily (+50 XP)'),
+                    ),
+                    _buildGuideItem(
+                      Icons.headset,
+                      const Color(0xFFFFD700),
+                      isArabic ? 'استماع للآيات' : (isFrench ? 'Écoute de versets' : 'Audio Engagement'),
+                      isArabic ? 'استمع لآية كاملة (+5 XP)' : (isFrench ? 'Écoutez un verset complet (+5 XP)' : 'Listen to a full verse (+5 XP)'),
+                    ),
+                    _buildGuideItem(
+                      Icons.bookmark,
+                      Colors.blueAccent,
+                      isArabic ? 'حفظ العلامات' : (isFrench ? 'Gestion des favoris' : 'Bookmarking'),
+                      isArabic ? 'حفظ موضع القراءة (+10 XP)' : (isFrench ? 'Enregistrez votre position (+10 XP)' : 'Save your reading position (+10 XP)'),
+                    ),
+                    _buildGuideItem(
+                      Icons.stars,
+                      const Color(0xFFFFD700),
+                      isArabic ? 'إتمام السورة' : (isFrench ? 'Achèvement de sourate' : 'Surah Completion'),
+                      isArabic ? 'الاستماع لنهاية السورة (+50 XP)' : (isFrench ? 'Ecoutez jusqu\'à la fin (+50 XP)' : 'Finish audio for a full Surah (+50 XP)'),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -336,23 +348,75 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildStatsDashboard(),
-              Expanded(child: _buildVerseCard()),
-              _buildActions(),
-              const SizedBox(height: 20),
-            ],
+          child: OrientationBuilder(
+            builder: (context, orientation) {
+              if (orientation == Orientation.landscape) {
+                return _buildLandscapeLayout();
+              }
+              return _buildPortraitLayout();
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildPortraitLayout() {
+    return Column(
+      children: [
+        _buildHeader(),
+        _buildStatsDashboard(),
+        Expanded(child: _buildVerseCard()),
+        _buildActions(),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildLandscapeLayout() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Left Column: Header and Stats
+        Expanded(
+          flex: 2,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildHeader(isLandscape: true),
+                _buildStatsDashboard(),
+              ],
+            ),
+          ),
+        ),
+        // Right Column: Verse Card and Actions
+        Expanded(
+          flex: 3,
+          child: Column(
+            children: [
+               Expanded(
+                   child: Padding(
+                       padding: const EdgeInsets.only(top: 10, right: 20),
+                       child: _buildVerseCard()
+                   )
+               ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(child: _buildActions(isLandscape: true)),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader({bool isLandscape = false}) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 10 : 20),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -378,12 +442,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.menu_book, color: Color(0xFFFFD700), size: 24),
+                      Icon(Icons.menu_book, color: const Color(0xFFFFD700), size: isLandscape ? 20 : 24),
                       const SizedBox(height: 2),
                       Text(
                         _currentLanguage == AppLanguage.arabic ? 'المصحف' : 'Mushaf',
                         style: GoogleFonts.amiri(
-                          fontSize: 10,
+                          fontSize: isLandscape ? 8 : 10,
                           color: const Color(0xFFFFD700),
                           fontWeight: FontWeight.bold,
                         ),
@@ -400,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               _getAppTitle(),
               style: GoogleFonts.amiri(
-                fontSize: 42,
+                fontSize: isLandscape ? 32 : 42,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
                 height: 1.2,
@@ -429,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   await _loadVerses();
                 }
               },
-              icon: const Icon(Icons.settings, color: Colors.white70, size: 28),
+              icon: Icon(Icons.settings, color: Colors.white70, size: isLandscape ? 24 : 28),
             ),
           ),
         ],
@@ -760,7 +824,53 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildActions({bool isLandscape = false}) {
+    if (isLandscape) {
+      // Landscape: Row layout for actions
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.menu_book,
+                label: _getContinueReadingText(),
+                onPressed: () async {
+                  if (_currentVerses != null && _currentVerses!['arabic'] != null) {
+                    final arabicVerse = _currentVerses!['arabic']!;
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VerseDetailScreen(
+                          surahNumber: arabicVerse.surahNumber,
+                          numberInSurah: arabicVerse.numberInSurah,
+                          language: _currentLanguage,
+                        ),
+                      ),
+                    );
+                    await _loadProgress();
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.refresh,
+                label: _getNewVerseText(),
+                onPressed: () async {
+                  await _notificationService.clearNotificationVerse();
+                  _loadRandomVerses();
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Portrait: Original Column layout
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(

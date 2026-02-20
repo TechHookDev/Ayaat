@@ -123,19 +123,24 @@ class _SurahListScreenState extends State<SurahListScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildSearchBar(),
-              if (_bookmark != null && _searchQuery.isEmpty) _buildContinueReadingBanner(),
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFFFD700)))
-                    : _error != null
-                        ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-                        : _buildSurahList(),
-              ),
-            ],
+          child: OrientationBuilder(
+            builder: (context, orientation) {
+              final isLandscape = orientation == Orientation.landscape;
+              return Column(
+                children: [
+                  _buildHeader(isLandscape),
+                  _buildSearchBar(isLandscape),
+                  if (_bookmark != null && _searchQuery.isEmpty) _buildContinueReadingBanner(isLandscape),
+                  Expanded(
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: Color(0xFFFFD700)))
+                        : _error != null
+                            ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+                            : _buildSurahList(),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -166,20 +171,20 @@ class _SurahListScreenState extends State<SurahListScreen> {
     }
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isLandscape) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 5 : 20),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
+            icon: Icon(Icons.arrow_back_ios, color: Colors.white70, size: isLandscape ? 20 : 24),
           ),
           Expanded(
             child: Text(
               _getHeaderTitle(),
               style: GoogleFonts.amiri(
-                fontSize: 28,
+                fontSize: isLandscape ? 22 : 28,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -192,9 +197,9 @@ class _SurahListScreenState extends State<SurahListScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(bool isLandscape) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 0 : 10),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
@@ -206,10 +211,11 @@ class _SurahListScreenState extends State<SurahListScreen> {
           style: GoogleFonts.outfit(color: Colors.white),
           decoration: InputDecoration(
             hintText: _getSearchHint(),
-            hintStyle: GoogleFonts.outfit(color: Colors.white54),
-            prefixIcon: const Icon(Icons.search, color: Colors.white54),
+            hintStyle: GoogleFonts.outfit(color: Colors.white54, fontSize: isLandscape ? 14 : 16),
+            prefixIcon: Icon(Icons.search, color: Colors.white54, size: isLandscape ? 20 : 24),
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 10 : 15),
+            isDense: isLandscape, // Reduces internal padding inherently
           ),
           textDirection: _currentLanguage == AppLanguage.arabic ? TextDirection.rtl : TextDirection.ltr,
         ),
@@ -217,7 +223,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
     );
   }
 
-  Widget _buildContinueReadingBanner() {
+  Widget _buildContinueReadingBanner(bool isLandscape) {
     if (_bookmark == null) return const SizedBox.shrink();
     
     final surahNum = _bookmark!['surah']!;
@@ -248,7 +254,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20).copyWith(bottom: 10),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 5 : 10),
       child: InkWell(
         onTap: () => _navigateToSurah(surahNum, numberInSurah: verseNum),
         borderRadius: BorderRadius.circular(16),

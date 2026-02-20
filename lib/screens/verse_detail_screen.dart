@@ -318,34 +318,93 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              if (_error != null)
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      _error!,
-                      style: GoogleFonts.amiri(fontSize: 16, color: Colors.red),
-                    ),
-                  ),
-                )
-              else if (_isLoading)
-                const Expanded(
-                  child: Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  ),
-                )
-              else
-                Expanded(child: _buildVersesList()),
-            ],
+          child: OrientationBuilder(
+            builder: (context, orientation) {
+              final isLandscape = orientation == Orientation.landscape;
+              return Column(
+                children: [
+                  _buildHeader(isLandscape),
+                  if (_error != null)
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          _error!,
+                          style: GoogleFonts.amiri(fontSize: 16, color: Colors.red),
+                        ),
+                      ),
+                    )
+                  else if (_isLoading)
+                    const Expanded(
+                      child: Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    )
+                  else
+                    Expanded(child: _buildVersesList()),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isLandscape) {
+    if (isLandscape) {
+      // Compact horizontal layout for landscape
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_ios, color: Colors.white70, size: 20),
+            ),
+            Expanded(
+              child: Text(
+                _surahName,
+                style: GoogleFonts.amiri(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.left,
+                textDirection: widget.language == AppLanguage.arabic
+                    ? TextDirection.rtl
+                    : TextDirection.ltr,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Font Size Controls inline
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => _changeFontSize(-2),
+                  icon: const Icon(Icons.remove, color: Colors.white70, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                 Text('A', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 14)),
+                 const SizedBox(width: 8),
+                 Text('${_fontSize.toInt()}', style: GoogleFonts.outfit(color: const Color(0xFFFFD700), fontWeight: FontWeight.bold, fontSize: 14)),
+                 const SizedBox(width: 8),
+                 Text('A', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
+                IconButton(
+                  onPressed: () => _changeFontSize(2),
+                  icon: const Icon(Icons.add, color: Colors.white70, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Default Portrait layout
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
