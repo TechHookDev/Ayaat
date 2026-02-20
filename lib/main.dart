@@ -96,6 +96,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     final notificationVerse = await _notificationService.getNotificationVerse();
     final isComplete = await _notificationService.isOnboardingComplete();
 
+    bool showSplash = false;
     if (notificationVerse == null) {
       final prefs = await SharedPreferences.getInstance();
       showSplash = !(prefs.getBool('has_seen_v109_splash') ?? false);

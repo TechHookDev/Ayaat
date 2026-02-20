@@ -111,11 +111,11 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                 ),
                 const SizedBox(height: 30),
                 _buildFeatureRow(
-                  icon: Icons.gps_fixed,
-                  title: isArabic ? 'دقة 100٪ في الملاحة' : 'Surgical Precision',
+                  icon: Icons.text_fields,
+                  title: isArabic ? 'تحكم في حجم الخط' : 'Adjustable Font Size',
                   desc: isArabic 
-                      ? 'الانتقال بدقة متناهية إلى الآية المطلوبة فوراُ' 
-                      : 'Instantly jump to the precise pixel of your bookmarked verse.',
+                      ? 'تكبير وتصغير حجم الخط لراحة عينيك أثناء القراءة الاستثنائية' 
+                      : 'Increase or decrease the font size for a comfortable reading experience.',
                 ),
                 
                 const Spacer(),

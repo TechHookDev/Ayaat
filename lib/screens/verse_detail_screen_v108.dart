@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../services/language_service.dart';
-import '../services/preferences_service.dart';
-import '../services/progress_service.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class VerseDetailScreen extends StatefulWidget {
   final int surahNumber;
@@ -33,49 +29,14 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   int? _targetVerseIndex;
   final Map<int, GlobalKey> _verseKeys = {};
 
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isPlaying = false;
-  int? _currentlyPlayingIndex;
-  Map<String, dynamic>? _bookmark;
-  double _fontSize = 24.0;
-  final PreferencesService _prefsService = PreferencesService();
-  final ProgressService _progressService = ProgressService();
-
   @override
   void initState() {
     super.initState();
     _loadSurah();
-    _loadPreferences();
-    _setupAudioPlayer();
-  }
-
-  Future<void> _loadPreferences() async {
-    final fontSize = await _prefsService.getFontSize();
-    final bookmark = await _prefsService.getBookmark();
-    if (mounted) {
-      setState(() {
-        _fontSize = fontSize;
-        _bookmark = bookmark;
-      });
-    }
-  }
-
-  void _setupAudioPlayer() {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state == PlayerState.playing;
-          if (state == PlayerState.completed) {
-            _currentlyPlayingIndex = null;
-          }
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -201,54 +162,6 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     debugPrint('✓ Successfully scrolled to verse ${widget.numberInSurah}');
   }
 
-  Future<void> _toggleBookmark(int verseInSurah, int globalNumber) async {
-    final isCurrentlyBookmarked = _bookmark?['surah'] == widget.surahNumber && _bookmark?['verse'] == verseInSurah;
-    
-    if (isCurrentlyBookmarked) {
-      await _prefsService.removeBookmark();
-      if (mounted) setState(() => _bookmark = null);
-    } else {
-      await _prefsService.saveBookmark(
-        widget.surahNumber,
-        verseInSurah,
-      );
-      // Gamification: Give points for intentional bookmarking
-      await _progressService.addPoints(10);
-      final newBookmark = await _prefsService.getBookmark();
-      if (mounted) setState(() => _bookmark = newBookmark);
-    }
-  }
-
-  Future<void> _changeFontSize(double delta) async {
-    final newSize = (_fontSize + delta).clamp(16.0, 40.0);
-    await _prefsService.saveFontSize(newSize);
-    setState(() => _fontSize = newSize);
-  }
-
-  Future<void> _playAudio(int globalVerseNumber, int index) async {
-    try {
-      if (_currentlyPlayingIndex == index && _isPlaying) {
-        await _audioPlayer.pause();
-      } else {
-        // Gamification: Give points for audio engagement
-        await _progressService.addPoints(5);
-        final url = 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$globalVerseNumber.mp3';
-        await _audioPlayer.play(UrlSource(url));
-        if (mounted) {
-          setState(() {
-            _currentlyPlayingIndex = index;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Audio failed: $e', style: GoogleFonts.outfit())),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -291,61 +204,28 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _surahName,
-                  style: GoogleFonts.amiri(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                  textDirection: widget.language == AppLanguage.arabic
-                      ? TextDirection.rtl
-                      : TextDirection.ltr,
-                ),
-              ),
-              const SizedBox(width: 48), // Balance with back button
-            ],
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
           ),
-          const SizedBox(height: 16),
-          // Font Size Controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () => _changeFontSize(-2),
-                icon: const Icon(Icons.remove, color: Colors.white70, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _surahName,
+              style: GoogleFonts.amiri(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
-               Text(
-                'A',
-                style: GoogleFonts.outfit(color: Colors.white54, fontSize: 16),
-              ),
-               const SizedBox(width: 12),
-               Text(
-                '${_fontSize.toInt()}',
-                style: GoogleFonts.outfit(color: const Color(0xFFFFD700), fontWeight: FontWeight.bold),
-              ),
-               const SizedBox(width: 12),
-               Text(
-                'A',
-                style: GoogleFonts.outfit(color: Colors.white54, fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                onPressed: () => _changeFontSize(2),
-                icon: const Icon(Icons.add, color: Colors.white70, size: 20),
-              ),
-            ],
+              textAlign: TextAlign.center,
+              textDirection: widget.language == AppLanguage.arabic
+                  ? TextDirection.rtl
+                  : TextDirection.ltr,
+            ),
           ),
+          const SizedBox(width: 48), // Balance with back button
         ],
       ),
     );
@@ -387,7 +267,6 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   Widget _buildVerseItem(int verseIndex, Map<String, dynamic> verse) {
     final isTarget = verseIndex == _targetVerseIndex;
     final verseNumber = verse['numberInSurah'] as int;
-    final globalNumber = verse['number'] ?? 0; // Guard for global number if missing in base API mapping, though we added it in MushafPro
 
     String text = verse['text'];
 
@@ -402,48 +281,22 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     final goldColor = const Color(0xFFFFD700);
     final textColor = isTarget ? goldColor : Colors.white;
     final numberColor = isTarget ? goldColor : Colors.white54;
-    
-    final isBookmarked = _bookmark?['surah'] == widget.surahNumber && _bookmark?['verse'] == verseNumber;
-    final isPlaying = _currentlyPlayingIndex == verseIndex && _isPlaying;
 
     return Column(
       key: isTarget ? _verseKeys[verseIndex] : null,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Action Bar (Audio + Bookmark)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              onPressed: () => _playAudio(globalNumber == 0 ? verseNumber + ((widget.surahNumber-1)*7) : globalNumber, verseIndex), // Basic fallback if globalNumber not mapped
-              icon: Icon(
-                isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
-                color: isPlaying ? const Color(0xFFFFD700) : Colors.white54,
-                size: 28,
-              ),
-            ),
-            IconButton(
-              onPressed: () => _toggleBookmark(verseNumber, globalNumber == 0 ? verseNumber : globalNumber),
-              icon: Icon(
-                isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                color: isBookmarked ? const Color(0xFFFFD700) : Colors.white54,
-                size: 24,
-              ),
-            ),
-          ],
-        ),
-        
         Text(
           text,
           style: widget.language == AppLanguage.arabic
-              ? GoogleFonts.amiri(fontSize: _fontSize, color: textColor, height: 1.8)
-              : GoogleFonts.outfit(fontSize: _fontSize - 6, color: textColor, height: 1.6),
+              ? GoogleFonts.amiri(fontSize: 24, color: textColor, height: 1.8)
+              : GoogleFonts.outfit(fontSize: 18, color: textColor, height: 1.6),
           textAlign: TextAlign.center,
           textDirection: widget.language == AppLanguage.arabic
               ? TextDirection.rtl
               : TextDirection.ltr,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Text(
           '$verseNumber',
           style: GoogleFonts.outfit(
