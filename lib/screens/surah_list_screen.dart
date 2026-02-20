@@ -242,6 +242,11 @@ class _SurahListScreenState extends State<SurahListScreen> {
       text = 'استمر في القراءة: $surahName، آية $verseNum';
     }
 
+    int displayVerseNum = verseNum;
+    if (surahNum == 1 && verseNum > 1) {
+      displayVerseNum = verseNum - 1;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20).copyWith(bottom: 10),
       child: InkWell(
@@ -284,7 +289,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$surahName • Ayah $verseNum',
+                      '$surahName • Ayah $displayVerseNum',
                       style: GoogleFonts.amiri(
                         color: Colors.white,
                         fontSize: 16,

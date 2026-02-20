@@ -414,7 +414,11 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
           if (widget.surahNumber != 9) _buildBismillah(),
           
           // Render the batches
-          ...versesToRender.asMap().entries.map((entry) {
+          ...versesToRender.asMap().entries.where((entry) {
+            // Completely hide Verse 1 (index 0) of Al-Fatiha to remove the duplicate Bismillah block
+            if (widget.surahNumber == 1 && entry.key == 0) return false;
+            return true;
+          }).map((entry) {
             return _buildVerseItem(entry.key, entry.value);
           }),
           
@@ -452,6 +456,11 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     final isTarget = verseIndex == _targetVerseIndex;
     final verseNumber = verse['numberInSurah'] as int;
     final globalNumber = verse['number'] ?? 0; // Guard for global number if missing in base API mapping, though we added it in MushafPro
+
+    // Shift display verse number for Al-Fatiha so Al-Hamdu lillahi is Verse 1
+    final int displayVerseNumber = (widget.surahNumber == 1 && verseNumber > 1) 
+        ? verseNumber - 1 
+        : verseNumber;
 
     String text = verse['text'];
 
@@ -509,7 +518,7 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          '$verseNumber',
+          '$displayVerseNumber',
           style: GoogleFonts.outfit(
             fontSize: 14,
             color: numberColor,
