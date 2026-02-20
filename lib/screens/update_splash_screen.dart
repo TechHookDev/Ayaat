@@ -104,7 +104,7 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                 const SizedBox(height: 30),
                 _buildFeatureRow(
                   icon: Icons.menu_book,
-                  title: isArabic ? 'مصحف برو' : 'Mushaf Pro',
+                  title: isArabic ? 'المصحف' : 'Mushaf',
                   desc: isArabic 
                       ? 'الاستماع لتلاوة الآيات بصوت نقي وحفظ موضع القراءة بسلاسة' 
                       : 'Listen to clear audio recitations and save your progress seamlessly.',
