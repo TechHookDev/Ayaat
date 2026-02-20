@@ -31,6 +31,11 @@ extension ExactAlarmPermission on FlutterLocalNotificationsPlugin {
         final canSchedule = await androidPlugin.canScheduleExactNotifications();
         if (canSchedule ?? false) {
           return ExactAlarmPermissionStatus.granted;
+        } else {
+          final granted = await androidPlugin.requestExactAlarmsPermission();
+          if (granted ?? false) {
+            return ExactAlarmPermissionStatus.granted;
+          }
         }
       }
     }
@@ -140,6 +145,11 @@ class NotificationService {
         final canSchedule = await androidPlugin.canScheduleExactNotifications();
         if (canSchedule ?? false) {
           return ExactAlarmPermissionStatus.granted;
+        } else {
+          final granted = await androidPlugin.requestExactAlarmsPermission();
+          if (granted ?? false) {
+            return ExactAlarmPermissionStatus.granted;
+          }
         }
       }
     }
@@ -216,7 +226,12 @@ class NotificationService {
         TimeOfDay.fromDateTime(isha),
       ];
 
-      debugPrint('Scheduling prayer times (with +30min offset): $times');
+      debugPrint('>> [DEBUG] Calculated Prayer Times (Today, with +30min offset):');
+      debugPrint('   - Fajr: $fajr');
+      debugPrint('   - Dhuhr: $dhuhr');
+      debugPrint('   - Asr: $asr');
+      debugPrint('   - Maghrib: $maghrib');
+      debugPrint('   - Isha: $isha');
       
       // Save mode
       await prefs.setString(_notificationModeKey, 'prayer');
@@ -491,9 +506,8 @@ class NotificationService {
     await prefs.setString(_notificationTimesKey, jsonEncode(timesJson));
     await prefs.setBool(_notificationsEnabledKey, true);
 
-    // Cancel all existing to avoid duplicates or mess
-    await _notifications.cancelAll();
-
+    // Move cancelAll down to right before we start succeeding in scheduling
+    
     // Schedule for the next 7 days
     final langService = LanguageService();
     final currentLanguage = await langService.getCurrentLanguage();
@@ -504,6 +518,7 @@ class NotificationService {
     debugPrint('Fetching and scheduling $totalVersesNeeded truly random verses in batches of $batchSize...');
     
     int currentVerseIndex = 0;
+    bool hasCancelledOld = false;
 
     try {
       Coordinates? myCoordinates;
@@ -526,11 +541,30 @@ class NotificationService {
         
         final List<Future<Verse>> batchFutures = [];
         for (int j = 0; j < currentBatchSize; j++) {
-           batchFutures.add(_quranApi.getRandomVerse(language: currentLanguage));
+           batchFutures.add(_quranApi.getRandomVerse(language: currentLanguage).catchError((e) {
+             debugPrint('API Error fetching verse, using fallback: $e');
+             return Verse(
+                number: 1,
+                text: currentLanguage == AppLanguage.arabic 
+                   ? 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ' 
+                   : currentLanguage == AppLanguage.french
+                      ? 'Au nom d\'Allah, le Tout Miséricordieux, le Très Miséricordieux.'
+                      : 'In the name of Allah, the Entirely Merciful, the Especially Merciful.',
+                numberInSurah: 1,
+                surahName: 'سُورَةُ ٱلْفَاتِحَةِ',
+                surahEnglishName: 'Al-Faatiha',
+                surahNumber: 1,
+              );
+           }));
         }
         
         // Wait for batch
         final batchVerses = await Future.wait(batchFutures);
+
+        if (!hasCancelledOld) {
+          await _notifications.cancelAll();
+          hasCancelledOld = true;
+        }
 
         // Schedule THIS batch
         for (final verse in batchVerses) {
@@ -619,9 +653,11 @@ class NotificationService {
       // If the resulting time is in the past, we shouldn't schedule it.
       // (This happens if daysAhead=0 and the time has already passed today)
       if (scheduledDate.isBefore(now)) {
-        // debugPrint('Skipping past time: $scheduledDate');
+        debugPrint('>> [DEBUG] Skipping past time: $scheduledDate (Already passed)');
         return; 
       }
+
+      debugPrint('>> [DEBUG] SUCCESS: ZonedSchedule ID $id set for EXACTLY: $scheduledDate (Verse ID: ${verse.number})');
 
       await _notifications.zonedSchedule(
         id,
@@ -677,24 +713,6 @@ class NotificationService {
     await prefs.remove(_notificationVerseKey);
   }
 
-  /// Calculate the next instance of the specified time
-  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
-    );
-
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-
-    return scheduledDate;
-  }
 
   /// Cancel all scheduled notifications
   Future<void> cancelAll() async {

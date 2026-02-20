@@ -1,9 +1,8 @@
-<en-US>
+en-US
 Resolved an issue where prayer time notifications might occasionally fail to schedule due to network connectivity issues.
-</en-US>
-<ar>
+
+ar-SA
 تم إصلاح مشكلة كانت تمنع جدولة إشعارات أوقات الصلاة أحياناً بسبب ضعف الاتصال بالإنترنت.
-</ar>
-<fr-FR>
+
+fr-FR
 Résolution d'un problème où les notifications des heures de prière pouvaient parfois ne pas se programmer en raison de problèmes de connectivité réseau.
-</fr-FR>
