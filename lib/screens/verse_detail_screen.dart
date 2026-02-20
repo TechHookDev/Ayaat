@@ -40,6 +40,11 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   double _fontSize = 24.0;
   final PreferencesService _prefsService = PreferencesService();
   final ProgressService _progressService = ProgressService();
+  
+  // Progressive Rendering State
+  int _renderedVerseCount = 0;
+  static const int _initialRenderAmount = 15;
+  static const int _batchRenderAmount = 30;
 
   @override
   void initState() {
@@ -127,8 +132,10 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         }
 
         setState(() {
-          _isLoading = false;
+          // Instead of finishing loading here, we start the rendering pipeline
         });
+        
+        _startProgressiveRendering();
 
         // Scroll after build - wait for SingleChildScrollView to render
         if (_targetVerseIndex != null) {
@@ -142,11 +149,53 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         throw Exception('Failed to load surah: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  void _startProgressiveRendering() {
+    if (!mounted) return;
+    
+    // If we have a target verse, we need to render at least up to that verse immediately
+    int targetRender = _verses.length;
+    if (_targetVerseIndex != null) {
+        targetRender = _targetVerseIndex! + _initialRenderAmount;
+        if (targetRender > _verses.length) targetRender = _verses.length;
+    } else {
+        targetRender = _initialRenderAmount;
+        if (targetRender > _verses.length) targetRender = _verses.length;
+    }
+
+    setState(() {
+      _isLoading = false;
+      _renderedVerseCount = targetRender;
+    });
+
+    _renderNextBatch();
+  }
+
+  void _renderNextBatch() {
+    if (!mounted || _renderedVerseCount >= _verses.length) return;
+
+    Future.microtask(() {
+      if (mounted) {
+        setState(() {
+          _renderedVerseCount += _batchRenderAmount;
+          if (_renderedVerseCount > _verses.length) {
+            _renderedVerseCount = _verses.length;
+          }
+        });
+        // Continue rendering next batch in the next microtask
+        if (_renderedVerseCount < _verses.length) {
+           _renderNextBatch();
+        }
+      }
+    });
   }
 
   String _getEdition() {
@@ -353,6 +402,9 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
 
   Widget _buildVersesList() {
     // Use SingleChildScrollView with Column for 100% reliability
+    // We render progressively to prevent UI freezing on huge Surahs
+    final versesToRender = _verses.take(_renderedVerseCount).toList();
+
     return SingleChildScrollView(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -360,10 +412,22 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         children: [
           // Bismillah header (except Surah 9)
           if (widget.surahNumber != 9) _buildBismillah(),
-          // All verses
-          ..._verses.asMap().entries.map((entry) {
+          
+          // Render the batches
+          ...versesToRender.asMap().entries.map((entry) {
             return _buildVerseItem(entry.key, entry.value);
           }),
+          
+          // Show subtle loading indicator at bottom if still rendering in background
+          if (_renderedVerseCount < _verses.length)
+             const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: SizedBox(
+                   width: 24, 
+                   height: 24, 
+                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)
+                ),
+             ),
         ],
       ),
     );
@@ -391,9 +455,9 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
 
     String text = verse['text'];
 
-    // Remove bismillah from first verse (except Surah 1)
+    // Remove bismillah from first verse EXCEPT Surah 9 (Tawbah).
+    // Note: User reported Fatiha (1) had duplicate Bismillah, so we must strip it there too.
     if (verseIndex == 0 &&
-        widget.surahNumber != 1 &&
         widget.surahNumber != 9 &&
         widget.language == AppLanguage.arabic) {
       text = _removeBismillah(text);
