@@ -1,8 +1,22 @@
-en-US
-Resolved an issue where prayer time notifications might occasionally fail to schedule due to network connectivity issues.
+Ayaat v1.0.9 - The "Surgical Precision" Update
 
-ar-SA
-تم إصلاح مشكلة كانت تمنع جدولة إشعارات أوقات الصلاة أحياناً بسبب ضعف الاتصال بالإنترنت.
+This update introduces a fundamental overhaul of the reading experience, focusing on extreme performance and guaranteed navigation accuracy.
 
-fr-FR
-Résolution d'un problème où les notifications des heures de prière pouvaient parfois ne pas se programmer en raison de problèmes de connectivité réseau.
+🚀 PERFORMANCE & SMOOTHNESS
+- Restored High-Performance ListView engine: Opening large Surahs (like Al-Baqarah) is now instant and lag-free.
+- Massive Cache Buffer: Implemented cacheExtent optimization to pre-render verses, ensuring buttery-smooth scrolling even on older devices.
+- Zero-Stutter Transitions: Optimized the rendering pipeline with RepaintBoundaries for a professional, native feel.
+
+🎯 SURGICAL NAVIGATION
+- Direct-Offset Engine: Replaced estimated scrolling with a deterministic "Surgical" calculation. The app now measures the exact pixel height of every preceding verse for a 100% accurate landing.
+- Phase-Sync Smoothness: "Continue Reading" now glides gracefully to the target Ayah without any visual jumps or polling stutters.
+- Premium Animated Highlights: Target verses now glow into focus with a refined, subtle shadow animation.
+
+🧹 MINIMALIST UI & POLISH
+- Clean Surah List: Removed Ayah counts ("286 Verses") from the main list for a more elegant, minimalist aesthetic.
+- Global Roman Numerals: Standardized all numbering (1, 2, 3) across all languages.
+- Auto-Sync Versioning: The About page now automatically keeps in sync with the app manifest.
+- Language Refinements: Polished translations for Arabic, English, and French across all settings.
+
+May this update bring you closer to the Book of Allah. Please remember us in your prayers.
+TechHook.dev

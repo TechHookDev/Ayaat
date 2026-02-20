@@ -10,6 +10,22 @@ class QuranApiService {
   static const int _totalVerses = 6236;
 
   final Random _random = Random();
+  
+  // Helper to convert numbers to Arabic numerals
+  static String toArabicNumerals(String input) {
+    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    for (int i = 0; i < english.length; i++) {
+      input = input.replaceAll(english[i], arabic[i]);
+    }
+    return input;
+  }
+  
+  // In-memory cache for Surah data to achieve "Infinite Speed"
+  static final Map<String, Map<String, List<dynamic>>> _surahCache = {};
+  static final Map<AppLanguage, List<dynamic>> _surahListCache = {};
+
+  static Map<String, Map<String, List<dynamic>>> getSurahCache() => _surahCache;
 
   /// Fetches a random verse from the Quran in the specified language
   Future<Verse> getRandomVerse({AppLanguage? language}) async {
@@ -188,20 +204,71 @@ class QuranApiService {
       throw Exception('Error fetching verse: $e');
     }
   }
+
+  /// Fetches a full Surah with translation
+  Future<Map<String, List<dynamic>>> getSurahWithTranslation(
+      int surahNumber, AppLanguage language) async {
+    final cacheKey = '$surahNumber-${language.name}';
+    if (_surahCache.containsKey(cacheKey)) {
+      return _surahCache[cacheKey]!;
+    }
+
+    final langService = LanguageService();
+    AppLanguage translationLang = language == AppLanguage.arabic 
+        ? AppLanguage.english 
+        : language;
+
+    final translationEdition = langService.getApiEdition(translationLang);
+    final arabicEdition = 'ar'; 
+
+    final arabicUrl = Uri.parse('$_baseUrl/surah/$surahNumber/$arabicEdition');
+    final translationUrl = Uri.parse('$_baseUrl/surah/$surahNumber/$translationEdition');
+
+    try {
+      final responses = await Future.wait([
+        http.get(arabicUrl),
+        http.get(translationUrl),
+      ]);
+
+      if (responses[0].statusCode == 200 && responses[1].statusCode == 200) {
+        final arabicData = jsonDecode(responses[0].body)['data'];
+        final translationData = jsonDecode(responses[1].body)['data'];
+
+        final result = {
+          'arabic': arabicData['ayahs'] as List<dynamic>,
+          'translation': translationData['ayahs'] as List<dynamic>,
+        };
+        
+        _surahCache[cacheKey] = result;
+        return result;
+      } else {
+        throw Exception('Failed to load surah with translation');
+      }
+    } catch (e) {
+      throw Exception('Error fetching surah: $e');
+    }
+  }
+
+  /// Returns the audio streaming URL for a specific global verse number
+  String getAudioUrl(int globalAyahNumber) {
+    // We use Mishary Alafasy's recitation
+    return 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$globalAyahNumber.mp3';
+  }
+
   /// Fetches list of all Surahs
   Future<List<dynamic>> getSurahs(AppLanguage language) async {
-    final langService = LanguageService();
-    // Default to English (en.sahih) for metadata if not arabic, as it has englishName
-    // But for names we might want specific editions. 
-    // The meta endpoint is better: https://api.alquran.cloud/v1/surah
-    // It returns all surahs with englishName, name (Arabic), number, numberOfAyahs.
+    if (_surahListCache.containsKey(language)) {
+      return _surahListCache[language]!;
+    }
     
     try {
       final response = await http.get(Uri.parse('$_baseUrl/surah'));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        return json['data'] as List<dynamic>;
+        final list = json['data'] as List<dynamic>;
+        _surahListCache[language] = list;
+        return list;
       } else {
         throw Exception('Failed to load surahs');
       }

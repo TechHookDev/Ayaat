@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/language_service.dart';
 import '../services/notification_service.dart';
@@ -22,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _notificationMode = 'manual';
   bool _isLoading = true;
   bool _isAboutExpanded = false;
+  String _appVersion = '1.0.9'; // Fallback
 
   @override
   void initState() {
@@ -56,9 +59,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // Default if empty
         _notificationTimes.add(const TimeOfDay(hour: 9, minute: 0));
       }
+      _prayerTimes.clear();
+      
       _isLoading = false;
-      debugPrint('Settings: _loadSettings complete - _prayerTimes: $_prayerTimes');
     });
+
+    // Load app version separately
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = packageInfo.version;
+      });
+    }
+    debugPrint('Settings: _loadSettings complete - Version: $_appVersion');
   }
 
   // Translation methods
@@ -907,7 +920,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
           // Version
           Text(
-            'v1.0.8',
+            'v$_appVersion',
             style: GoogleFonts.outfit(fontSize: 12, color: Colors.white38),
           ),
           const SizedBox(height: 20),

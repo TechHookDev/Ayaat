@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:Ayaat/services/notification_service.dart';
+import 'package:ayaat/services/notification_service.dart';
 
 void main() {
   testWidgets('Simulate Notification Fetching', (WidgetTester tester) async {

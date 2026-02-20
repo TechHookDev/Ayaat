@@ -3,8 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/update_splash_screen.dart';
 import 'screens/verse_detail_screen.dart';
 import 'services/notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +49,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   final NotificationService _notificationService = NotificationService();
   bool _isLoading = true;
   bool _showOnboarding = true;
+  bool _showUpdateSplash = false;
   int? _targetVerseNumber;
 
   @override
@@ -93,11 +96,18 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     final notificationVerse = await _notificationService.getNotificationVerse();
     final isComplete = await _notificationService.isOnboardingComplete();
 
+    bool showSplash = false;
+    if (notificationVerse == null && isComplete) {
+      final prefs = await SharedPreferences.getInstance();
+      showSplash = !(prefs.getBool('has_seen_v109_splash') ?? false);
+    }
+
     if (mounted) {
       setState(() {
         // If there's a notification verse, show HomeScreen (it will display the verse)
         // Otherwise, check if onboarding is complete
         _showOnboarding = notificationVerse == null && !isComplete;
+        _showUpdateSplash = showSplash;
         _isLoading = false;
       });
     }
@@ -122,8 +132,14 @@ class _AppEntryPointState extends State<AppEntryPoint> {
       );
     }
 
-    return _showOnboarding
-        ? const OnboardingScreen()
-        : HomeScreen(initialVerseNumber: _targetVerseNumber);
+    if (_showOnboarding) {
+      return const OnboardingScreen();
+    }
+    
+    if (_showUpdateSplash && _targetVerseNumber == null) {
+      return const UpdateSplashScreen();
+    }
+    
+    return HomeScreen(initialVerseNumber: _targetVerseNumber);
   }
 }
