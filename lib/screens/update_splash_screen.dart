@@ -95,27 +95,27 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                 
                 // Feature List
                 _buildFeatureRow(
+                  icon: Icons.local_fire_department,
+                  title: isArabic ? 'نظام النقاط والمواظبة' : 'Daily Streak & Points',
+                  desc: isArabic 
+                      ? 'بناء عادة يومية وتتبع قراءتك مع نظام النقاط الجديد' 
+                      : 'Build a daily habit and track your progress with our new points system.',
+                ),
+                const SizedBox(height: 30),
+                _buildFeatureRow(
+                  icon: Icons.menu_book,
+                  title: isArabic ? 'مصحف برو' : 'Mushaf Pro',
+                  desc: isArabic 
+                      ? 'قراءة مزدوجة اللغة مع الاستماع للآيات وحفظ موضع القراءة' 
+                      : 'Dual-language reading, audio playback, and seamless bookmarking.',
+                ),
+                const SizedBox(height: 30),
+                _buildFeatureRow(
                   icon: Icons.gps_fixed,
-                  title: isArabic ? 'دقة متناهية' : 'Surgical Precision',
+                  title: isArabic ? 'دقة 100٪ في الملاحة' : 'Surgical Precision',
                   desc: isArabic 
-                      ? 'نظام ملاحة جديد يضمن الوصول لموضع قراءتك بدقة 100٪' 
-                      : 'New navigation system guarantees 100% accuracy to your reading position.',
-                ),
-                const SizedBox(height: 30),
-                _buildFeatureRow(
-                  icon: Icons.bolt,
-                  title: isArabic ? 'أداء فائق' : 'Extreme Performance',
-                  desc: isArabic 
-                      ? 'فتح السور الطويلة فوراً مع سلاسة تامة في التصفح' 
-                      : 'Open large surahs instantly with buttery-smooth scrolling.',
-                ),
-                const SizedBox(height: 30),
-                _buildFeatureRow(
-                  icon: Icons.cleaning_services,
-                  title: isArabic ? 'واجهة أرقى' : 'Polished UI',
-                  desc: isArabic 
-                      ? 'تصميم مبسط وجميل يركز على قدسية النص القرآني' 
-                      : 'Minimalist design focused on the sanctity of the Quranic text.',
+                      ? 'الانتقال بدقة متناهية إلى الآية المطلوبة فوراُ' 
+                      : 'Instantly jump to the precise pixel of your bookmarked verse.',
                 ),
                 
                 const Spacer(),

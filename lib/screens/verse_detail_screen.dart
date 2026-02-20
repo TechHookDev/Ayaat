@@ -210,9 +210,19 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     // Phase 1: Surgical Direct-Offset Navigation
     // We calculate the EXACT pixel height of the viewport content.
     final hasBismillah = widget.surahNumber != 9 && widget.surahNumber != 1;
-    double targetOffset = 0;
+    double targetOffset = 10.0; // ListView top padding
     
-    if (hasBismillah) targetOffset += 100; // Accurate Bismillah height
+    if (hasBismillah) {
+       // Precise TextPainter for Bismillah block ('﷽' at size 32)
+       final bismillahPainter = TextPainter(
+          text: TextSpan(
+            text: '﷽',
+            style: GoogleFonts.amiri(fontSize: 32, color: const Color(0xFFFFD700)),
+          ),
+          textDirection: TextDirection.rtl,
+        )..layout(maxWidth: MediaQuery.of(context).size.width);
+       targetOffset += bismillahPainter.height + 48; // Padding vertical 24*2
+    }
 
     final double screenWidth = MediaQuery.of(context).size.width;
     // Total horizontal padding: 20*2 (ListView) + 24*2 (Card) = 88
@@ -222,30 +232,41 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         final text = widget.language == AppLanguage.arabic ? _arabicVerses[i]['text'] : _translationVerses[i]['text'];
         
         String processedText = text;
-        if (i == 0 && widget.surahNumber != 9) {
+        if (i == 0 && widget.surahNumber != 9 && widget.surahNumber != 1) {
            processedText = _removeBismillah(text);
         }
 
         final painter = TextPainter(
           text: TextSpan(
             text: processedText,
-            style: GoogleFonts.amiri(fontSize: _fontSize, height: 1.8),
+            style: GoogleFonts.amiri(
+              fontSize: (widget.surahNumber == 1 && i == 0) ? 32 : _fontSize, 
+              height: 1.8
+            ),
           ),
           textDirection: widget.language == AppLanguage.arabic ? TextDirection.rtl : TextDirection.ltr,
         )..layout(maxWidth: contentWidth);
 
-        // Fixed heights: Top Padding (24) + Action Bar (48) + Spacer (24) + Bottom Padding (24) + Margin (16) = 136
-        targetOffset += 136 + painter.height; 
+        // Fixed heights: Container Padding (48) + Row (48) + SizedBox (24) + Margin (16) + Borders (4) = 140
+        if (processedText.isNotEmpty) {
+          targetOffset += 140 + painter.height; 
+        } else {
+          // Empty text -> no SizedBox, no Text
+          targetOffset += 140 - 24; 
+        }
     }
     
-    // Surgical Landing: Direct Pixel Navigation
-    // We use a slow, smooth animation to give the user time to orient
+    // Surgical Landing with centering buffer
+    // Subtract 20px so the verse isn't touching the status bar area
+    final finalOffset = (targetOffset - 20).clamp(0.0, _scrollController.position.maxScrollExtent);
+    
     _scrollController.animateTo(
-      targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+      finalOffset,
       duration: const Duration(milliseconds: 1200),
       curve: Curves.easeInOutQuart,
     );
   }
+
 
   // Settings Actions
   Future<void> _toggleBookmark(int verseInSurah, int globalNumber) async {
@@ -460,13 +481,12 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
           final verseIndex = index - 1;
           return _buildVerseItem(verseIndex, _arabicVerses[verseIndex], _translationVerses[verseIndex]);
         } else {
-          // For Fatiha (1) and Tawbah (9), hide Verse 1 (index 0) block so it doesn't duplicate or show empty
-          if (widget.surahNumber == 1 && index == 0) return const SizedBox.shrink();
           return _buildVerseItem(index, _arabicVerses[index], _translationVerses[index]);
         }
       },
     );
   }
+
 
   Widget _buildBismillah() {
     return Center(
@@ -475,13 +495,14 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         child: Text(
           '﷽',
           style: GoogleFonts.amiri(
-            fontSize: 24,
+            fontSize: 32,
             color: const Color(0xFFFFD700),
           ),
         ),
       ),
     );
   }
+
 
   String _removeBismillah(String text) {
     text = text.replaceAll('\ufeff', '');
@@ -618,8 +639,8 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
                 child: Text(
                   displayText,
                   style: GoogleFonts.amiri(
-                    fontSize: _fontSize,
-                    color: Colors.white,
+                    fontSize: (widget.surahNumber == 1 && index == 0) ? 32 : _fontSize,
+                    color: (widget.surahNumber == 1 && index == 0) ? const Color(0xFFFFD700) : Colors.white,
                     height: 1.8,
                   ),
                   textAlign: TextAlign.center,
