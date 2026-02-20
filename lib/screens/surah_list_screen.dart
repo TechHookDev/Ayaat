@@ -289,7 +289,11 @@ class _SurahListScreenState extends State<SurahListScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$surahName • Ayah $displayVerseNum',
+                      _currentLanguage == AppLanguage.arabic 
+                          ? '$surahName • آية $displayVerseNum' 
+                          : (_currentLanguage == AppLanguage.french 
+                              ? '$surahName • Verset $displayVerseNum' 
+                              : '$surahName • Ayah $displayVerseNum'),
                       style: GoogleFonts.amiri(
                         color: Colors.white,
                         fontSize: 16,

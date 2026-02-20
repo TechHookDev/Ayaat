@@ -256,6 +256,10 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     if (isCurrentlyBookmarked) {
       await _prefsService.removeBookmark();
       if (mounted) setState(() => _bookmark = null);
+      if (mounted) {
+        final msg = widget.language == AppLanguage.arabic ? 'تم إزالة العلامة المرجعية' : (widget.language == AppLanguage.french ? 'Signet supprimé' : 'Bookmark removed');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg, style: GoogleFonts.outfit()), duration: const Duration(seconds: 2)));
+      }
     } else {
       await _prefsService.saveBookmark(
         widget.surahNumber,
@@ -265,6 +269,10 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
       await _progressService.addPoints(10);
       final newBookmark = await _prefsService.getBookmark();
       if (mounted) setState(() => _bookmark = newBookmark);
+      if (mounted) {
+        final msg = widget.language == AppLanguage.arabic ? 'تم حفظ العلامة المرجعية' : (widget.language == AppLanguage.french ? 'Signet ajouté' : 'Bookmark added');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg, style: GoogleFonts.outfit()), duration: const Duration(seconds: 2)));
+      }
     }
   }
 
