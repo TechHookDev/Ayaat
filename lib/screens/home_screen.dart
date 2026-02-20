@@ -266,9 +266,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (context) => const SettingsScreen(),
                   ),
                 );
-                // Reload data when returning from settings
+                // Reload language when returning from settings
                 await _loadLanguage();
-                await _loadVerses();
+                
+                // Only fetch a new verse if we didn't have one (e.g., previous network error)
+                if (_currentVerses == null || _error != null) {
+                  await _loadVerses();
+                }
               },
               icon: const Icon(Icons.settings, color: Colors.white70, size: 28),
             ),
