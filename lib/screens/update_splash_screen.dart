@@ -106,8 +106,8 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                   icon: Icons.menu_book,
                   title: isArabic ? 'مصحف برو' : 'Mushaf Pro',
                   desc: isArabic 
-                      ? 'قراءة مزدوجة اللغة مع الاستماع للآيات وحفظ موضع القراءة' 
-                      : 'Dual-language reading, audio playback, and seamless bookmarking.',
+                      ? 'الاستماع لتلاوة الآيات بصوت نقي وحفظ موضع القراءة بسلاسة' 
+                      : 'Listen to clear audio recitations and save your progress seamlessly.',
                 ),
                 const SizedBox(height: 30),
                 _buildFeatureRow(
