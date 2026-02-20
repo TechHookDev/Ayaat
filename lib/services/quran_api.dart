@@ -17,6 +17,48 @@ class QuranApiService {
     return getVerse(randomAyahNumber, language: language);
   }
 
+  /// Fetches all verses for a random Surah in a single API call
+  Future<List<Verse>> getRandomSurahVerses({AppLanguage? language}) async {
+    final langService = LanguageService();
+    final selectedLanguage = language ?? await langService.getCurrentLanguage();
+    final edition = langService.getApiEdition(selectedLanguage);
+    
+    // Choose a random Surah (1 to 114)
+    final randomSurahNumber = _random.nextInt(114) + 1;
+
+    final url = Uri.parse('$_baseUrl/surah/$randomSurahNumber/$edition');
+
+    return _fetchWithRetry(() async {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final surahData = json['data'];
+        final ayahsList = surahData['ayahs'] as List;
+        
+        final surahMeta = {
+          'number': surahData['number'],
+          'name': surahData['name'],
+          'englishName': surahData['englishName'],
+          'englishNameTranslation': surahData['englishNameTranslation'],
+          'revelationType': surahData['revelationType'],
+          'numberOfAyahs': surahData['numberOfAyahs'],
+        };
+        
+        return ayahsList.map((ayah) {
+          return Verse.fromJson({
+            'number': ayah['number'],
+            'text': ayah['text'],
+            'numberInSurah': ayah['numberInSurah'],
+            'surah': surahMeta,
+          });
+        }).toList();
+      } else {
+        throw Exception('Failed to load surah verses: \${response.statusCode}');
+      }
+    });
+  }
+
   /// Fetches a specific verse by its global number (1-6236) in the specified language
   Future<Verse> getVerse(int ayahNumber, {AppLanguage? language}) async {
     final langService = LanguageService();

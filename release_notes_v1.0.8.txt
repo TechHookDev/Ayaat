@@ -1,9 +1,8 @@
-<en-US>
+en-US
 Minor bug fixes.
-</en-US>
-<ar>
+
+ar-SA
 إصلاح بعض الأخطاء البرمجية.
-</ar>
-<fr-FR>
+
+fr-FR
 Corrections de bugs mineurs.
-</fr-FR>

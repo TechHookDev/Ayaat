@@ -907,7 +907,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
           // Version
           Text(
-            'v1.0.7',
+            'v1.0.8',
             style: GoogleFonts.outfit(fontSize: 12, color: Colors.white38),
           ),
           const SizedBox(height: 20),

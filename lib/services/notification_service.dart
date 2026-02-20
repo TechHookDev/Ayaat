@@ -60,7 +60,7 @@ class NotificationService {
   static const String _notificationVerseKey = 'notification_verse';
   static const String _notificationModeKey = 'notification_mode'; // 'manual' or 'prayer'
   static const int _baseNotificationId = 1000;
-  static const int _daysToSchedule = 30;
+  static const int _daysToSchedule = 7;
 
   /// Initialize the notification service (without requesting permissions)
   Future<void> initialize() async {
@@ -202,11 +202,11 @@ class NotificationService {
       final prayerTimes = PrayerTimes.today(myCoordinates, params);
       
       // Add 30 minutes offset to match onboarding logic
-      final fajr = prayerTimes.fajr.add(const Duration(minutes: 30));
-      final dhuhr = prayerTimes.dhuhr.add(const Duration(minutes: 30));
-      final asr = prayerTimes.asr.add(const Duration(minutes: 30));
-      final maghrib = prayerTimes.maghrib.add(const Duration(minutes: 30));
-      final isha = prayerTimes.isha.add(const Duration(minutes: 30));
+      final fajr = prayerTimes.fajr.toLocal().add(const Duration(minutes: 30));
+      final dhuhr = prayerTimes.dhuhr.toLocal().add(const Duration(minutes: 30));
+      final asr = prayerTimes.asr.toLocal().add(const Duration(minutes: 30));
+      final maghrib = prayerTimes.maghrib.toLocal().add(const Duration(minutes: 30));
+      final isha = prayerTimes.isha.toLocal().add(const Duration(minutes: 30));
 
       final times = <TimeOfDay>[
         TimeOfDay.fromDateTime(fajr),
@@ -222,7 +222,7 @@ class NotificationService {
       await prefs.setString(_notificationModeKey, 'prayer');
       
       // Fire and forget scheduling (don't block UI)
-      scheduleMultipleDaily(times, useDelay: useDelay).then((success) {
+      scheduleMultipleDaily(times, useDelay: useDelay, isPrayerMode: true).then((success) {
         if (!success) debugPrint('Background scheduling failed');
       });
 
@@ -433,8 +433,8 @@ class NotificationService {
     }
   }
 
-  /// Schedule multiple daily notifications at specified times for the next 30 days
-  Future<bool> scheduleMultipleDaily(List<TimeOfDay> times, {bool useDelay = false}) async {
+  /// Schedule multiple daily notifications at specified times for the next 7 days
+  Future<bool> scheduleMultipleDaily(List<TimeOfDay> times, {bool useDelay = false, bool isPrayerMode = false}) async {
     // delay to let the app load first if requested
     if (useDelay) {
       await Future.delayed(const Duration(seconds: 5));
@@ -477,6 +477,12 @@ class NotificationService {
     debugPrint('Scheduling notifications for the next $_daysToSchedule days.');
 
     final prefs = await SharedPreferences.getInstance();
+    
+    if (!isPrayerMode) {
+      if (prefs.getString(_notificationModeKey) == 'prayer') {
+         isPrayerMode = true;
+      }
+    }
 
     // Save the times
     final timesJson = times
@@ -488,24 +494,32 @@ class NotificationService {
     // Cancel all existing to avoid duplicates or mess
     await _notifications.cancelAll();
 
-    // Schedule for the next 30 days
+    // Schedule for the next 7 days
     final langService = LanguageService();
     final currentLanguage = await langService.getCurrentLanguage();
     
-    // Create a Set to ensure uniqueness within this batch
-    final Set<int> scheduledVerseIds = {};
-    
-    // Optimize: Fetch verses in batches to avoid network starvation
-    // We need _daysToSchedule * times.length verses
     final totalVersesNeeded = _daysToSchedule * times.length;
-    final batchSize = 3; // Reduced from 5 to avoid 429
-    // Removed: final List<Verse> verses = []; 
+    final batchSize = 7;
     
-    debugPrint('Fetching and scheduling $totalVersesNeeded verses in batches of $batchSize...');
+    debugPrint('Fetching and scheduling $totalVersesNeeded truly random verses in batches of $batchSize...');
     
     int currentVerseIndex = 0;
 
     try {
+      Coordinates? myCoordinates;
+      CalculationParameters? params;
+      if (isPrayerMode) {
+        final lastLat = prefs.getDouble(_lastKnownLatKey);
+        final lastLng = prefs.getDouble(_lastKnownLngKey);
+        if (lastLat != null && lastLng != null) {
+          myCoordinates = Coordinates(lastLat, lastLng);
+          params = CalculationMethod.muslim_world_league.getParameters();
+          params.madhab = Madhab.shafi;
+        } else {
+           isPrayerMode = false;
+        }
+      }
+
       for (int i = 0; i < totalVersesNeeded; i += batchSize) {
         final remaining = totalVersesNeeded - i;
         final currentBatchSize = remaining < batchSize ? remaining : batchSize;
@@ -517,35 +531,54 @@ class NotificationService {
         
         // Wait for batch
         final batchVerses = await Future.wait(batchFutures);
-        // Removed: verses.addAll(batchVerses);
 
-        // Schedule IMMEDIATELY after fetching this batch
+        // Schedule THIS batch
         for (final verse in batchVerses) {
           final day = currentVerseIndex ~/ times.length;
           final timeIndex = currentVerseIndex % times.length;
-          final time = times[timeIndex];
+          
+          int hour = times[timeIndex].hour;
+          int minute = times[timeIndex].minute;
+          
+          if (isPrayerMode && myCoordinates != null && params != null) {
+              final targetDate = DateTime.now().add(Duration(days: day));
+              final dateComponents = DateComponents(targetDate.year, targetDate.month, targetDate.day);
+              final dailyPrayerTimes = PrayerTimes(myCoordinates, dateComponents, params);
+              
+              DateTime prayerTarget;
+              switch(timeIndex) {
+                 case 0: prayerTarget = dailyPrayerTimes.fajr; break;
+                 case 1: prayerTarget = dailyPrayerTimes.dhuhr; break;
+                 case 2: prayerTarget = dailyPrayerTimes.asr; break;
+                 case 3: prayerTarget = dailyPrayerTimes.maghrib; break;
+                 case 4: prayerTarget = dailyPrayerTimes.isha; break;
+                 default: prayerTarget = dailyPrayerTimes.fajr; break;
+              }
+              prayerTarget = prayerTarget.toLocal().add(const Duration(minutes: 30));
+              hour = prayerTarget.hour;
+              minute = prayerTarget.minute;
+          }
           
           final notificationId = _baseNotificationId + (day * 100) + timeIndex;
           
           await _scheduleSingleNotification(
             id: notificationId,
             verse: verse,
-            hour: time.hour,
-            minute: time.minute,
+            hour: hour,
+            minute: minute,
             daysAhead: day,
           );
           
           currentVerseIndex++;
         }
         
-        debugPrint('Scheduled verses up to index $currentVerseIndex / $totalVersesNeeded');
+        debugPrint('Scheduled random verses up to index $currentVerseIndex / $totalVersesNeeded');
         
-        // Larger delay between batches to respect rate limits
-        // EXCEPT for the last batch to finish faster? No, consistent pacing is safer.
-        await Future.delayed(const Duration(milliseconds: 2000)); 
+        // Delay between batches to respect rate limits while maintaining OS speed
+        await Future.delayed(const Duration(milliseconds: 1500)); 
       }
       
-      debugPrint('Scheduled notifications for $_daysToSchedule days');
+      debugPrint('Scheduled fully random notifications for $_daysToSchedule days.');
       return true;
       
     } catch (e) {
@@ -572,19 +605,16 @@ class NotificationService {
       // The requirement is to schedule for future.
       
       final now = tz.TZDateTime.now(tz.local);
+      final targetDay = now.add(Duration(days: daysAhead));
       
-      // Target time for "Today"
       var scheduledDate = tz.TZDateTime(
         tz.local,
-        now.year,
-        now.month,
-        now.day,
+        targetDay.year,
+        targetDay.month,
+        targetDay.day,
         hour,
         minute,
       );
-
-      // Add the days offset
-      scheduledDate = scheduledDate.add(Duration(days: daysAhead));
 
       // If the resulting time is in the past, we shouldn't schedule it.
       // (This happens if daysAhead=0 and the time has already passed today)
