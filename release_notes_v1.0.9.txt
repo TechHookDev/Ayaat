@@ -1,22 +1,46 @@
-Ayaat v1.0.9 - The "Surgical Precision" Update
+--- Google Play (Max 500 chars) ---
+[EN]
+V1.0.9: Introducing Mushaf!
+• Mushaf: Listen to clear audio recitations and save your progress seamlessly.
+• Daily Streak & Points: Build a daily habit and track your progress with our new points system.
+• Adjustable Font Size: Increase or decrease the font size for a comfortable reading experience.
+• Performance: Instant loading for large surahs.
 
-This update introduces a fundamental overhaul of the reading experience, focusing on extreme performance and guaranteed navigation accuracy.
+[AR]
+الإصدار 1.0.9: تقديم المصحف!
+• المصحف: الاستماع لتلاوة الآيات بصوت نقي وحفظ موضع القراءة بسلاسة.
+• نظام النقاط والمواظبة: بناء عادة يومية وتتبع قراءتك.
+• تحكم في الخط: تكبير وتصغير حجم الخط لراحة عينيك.
+• أداء محسّن: تحميل فوري للسور الطويلة.
 
-🚀 PERFORMANCE & SMOOTHNESS
-- Restored High-Performance ListView engine: Opening large Surahs (like Al-Baqarah) is now instant and lag-free.
-- Massive Cache Buffer: Implemented cacheExtent optimization to pre-render verses, ensuring buttery-smooth scrolling even on older devices.
-- Zero-Stutter Transitions: Optimized the rendering pipeline with RepaintBoundaries for a professional, native feel.
+[FR]
+V1.0.9 : Présentation du Mushaf !
+• Mushaf : Écoutez des récitations audio claires et enregistrez votre progression.
+• Série quotidienne et points : Développez une habitude quotidienne.
+• Taille de police réglable : Augmentez ou diminuez la taille de la police.
+• Performances : Chargement instantané.
 
-🎯 SURGICAL NAVIGATION
-- Direct-Offset Engine: Replaced estimated scrolling with a deterministic "Surgical" calculation. The app now measures the exact pixel height of every preceding verse for a 100% accurate landing.
-- Phase-Sync Smoothness: "Continue Reading" now glides gracefully to the target Ayah without any visual jumps or polling stutters.
-- Premium Animated Highlights: Target verses now glow into focus with a refined, subtle shadow animation.
+--- App Store (Max 4000 chars) ---
+[EN]
+What's New in Version 1.0.9:
+• New: Mushaf Feature - Listen to clear audio recitations and save your progress seamlessly.
+• Gamification: Build a daily habit and track your progress with our new Daily Streak and Points system.
+• Adjustable Font Size: Increase or decrease the font size for a comfortable reading experience.
+• Performance Enhancements: Super-fast instant loading for large chapters.
+• UI Polish: Beautiful new localized bookmark notifications and completely fixed Fatiha numbering.
 
-🧹 MINIMALIST UI & POLISH
-- Clean Surah List: Removed Ayah counts ("286 Verses") from the main list for a more elegant, minimalist aesthetic.
-- Global Roman Numerals: Standardized all numbering (1, 2, 3) across all languages.
-- Auto-Sync Versioning: The About page now automatically keeps in sync with the app manifest.
-- Language Refinements: Polished translations for Arabic, English, and French across all settings.
+[AR]
+ما الجديد في الإصدار 1.0.9:
+• جديد: ميزة المصحف - الاستماع لتلاوة الآيات بصوت نقي وحفظ موضع القراءة بسلاسة.
+• نظام المكافآت: بناء عادة يومية وتتبع قراءتك مع نظام النقاط والمواظبة الجديد.
+• تحكم في حجم الخط: تكبير وتصغير حجم الخط لراحة عينيك.
+• تحسينات الأداء: تحميل فوري وسريع جداً للسور الطويلة.
+• واجهة المستخدم: إشعارات مرجعية جديدة ومترجمة وتحسين ترقيم سورة الفاتحة.
 
-May this update bring you closer to the Book of Allah. Please remember us in your prayers.
-TechHook.dev
+[FR]
+Nouveautés de la version 1.0.9 :
+• Nouveau : Fonction Mushaf - Écoutez des récitations audio claires et enregistrez votre progression de manière fluide.
+• Gamification : Développez une habitude quotidienne et suivez vos progrès avec notre nouveau système de série et de points.
+• Taille de police réglable : Personnalisez la taille de la police.
+• Améliorations des performances : Chargement instantané et ultra-rapide pour les longues sourates.
+• Améliorations de l'interface : Nouvelles notifications de signets et numérotation de la Fatiha corrigée.
