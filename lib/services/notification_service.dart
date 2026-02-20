@@ -236,12 +236,13 @@ class NotificationService {
       // Save mode
       await prefs.setString(_notificationModeKey, 'prayer');
       
-      // Fire and forget scheduling (don't block UI)
-      scheduleMultipleDaily(times, useDelay: useDelay, isPrayerMode: true).then((success) {
-        if (!success) debugPrint('Background scheduling failed');
-      });
+      // Await scheduling to ensure background tasks complete before app closure
+      final success = await scheduleMultipleDaily(times, useDelay: useDelay, isPrayerMode: true);
+      if (!success) {
+        debugPrint('Background scheduling failed');
+      }
 
-      // Return times immediately so UI updates
+      // Return times
       return times;
 
     } catch (e) {
@@ -778,10 +779,14 @@ class NotificationService {
       final currentLanguage = await langService.getCurrentLanguage();
       final verse = await _quranApi.getRandomVerse(language: currentLanguage);
 
-      await _notifications.show(
+      final now = tz.TZDateTime.now(tz.local);
+      final scheduledDate = now.add(const Duration(minutes: 1));
+
+      await _notifications.zonedSchedule(
         99, // Different ID for test notifications
-        'آيات - Ayaat',
+        'آيات - Ayaat (Test Background)',
         verse.text,
+        scheduledDate,
         NotificationDetails(
           android: AndroidNotificationDetails(
             'ayaat_daily_v2', // Updated to match new channel ID
@@ -801,6 +806,9 @@ class NotificationService {
             presentSound: true,
           ),
         ),
+        androidScheduleMode: AndroidScheduleMode.alarmClock,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
         payload: verse.number.toString(),
       );
     } catch (e) {

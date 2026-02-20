@@ -59,7 +59,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // Default if empty
         _notificationTimes.add(const TimeOfDay(hour: 9, minute: 0));
       }
-      _prayerTimes.clear();
       
       _isLoading = false;
     });
