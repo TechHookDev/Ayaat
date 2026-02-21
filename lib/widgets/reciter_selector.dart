@@ -128,15 +128,19 @@ class ReciterSelector extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            const Icon(
-              Icons.person_pin_rounded,
-              color: Color(0xFFFFD700),
-              size: 20,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: const Icon(
+                Icons.person_pin_rounded,
+                color: Color(0xFFFFD700),
+                size: 20,
+              ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 _getReciterDisplayName(audioService.currentReciter),
                 style: GoogleFonts.amiri(
@@ -149,10 +153,13 @@ class ReciterSelector extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: Color(0xFFFFD700),
-              size: 20,
+            Align(
+              alignment: Alignment.centerRight,
+              child: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Color(0xFFFFD700),
+                size: 20,
+              ),
             ),
           ],
         ),
