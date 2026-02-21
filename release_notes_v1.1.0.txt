@@ -1,8 +1,17 @@
-# Release Notes - Version 1.1.0 (Build 18)
+# Release Notes - v1.1.0
 
-## ✨ Improvements
-- Greatly improved the background prayer time scheduler to ensure notifications are delivered reliably on time, even if the app is fully closed or swiped away from memory.
+## Google Play (Android)
+What's New:
+- 🎙️ New Reciter: Added Yasser Al-Dosari for a more diverse listening experience.
+- 🎧 Premium Background Player: Complete redesign of the notification with branded titles, artwork stability, and better system integration.
+- 🎨 UI Polish: Absolute centering of the reciters name in the selector for a balanced look.
+- 🕋 Gapless Recitation: Faster, smoother transitions between verses.
+- 🛠️ Stability: Fixed several background playback crashes and improved metadata accuracy on Samsung devices.
 
-## 🐛 Bug Fixes
-- Fixed a bug where scheduled prayer times would disappear from the Settings screen if the app was reopened.
-- Resolved an issue in the settings interface where users could unintentionally remove automatically calculated prayer times.
+## Apple App Store (iOS)
+What's New:
+- New Reciter added: Yasser Al-Dosari.
+- Enhanced Background Audio: Redesigned media controls for a more premium experience.
+- UI Improvements: Branded notification titles and centered reciter selection.
+- Performance: Smoother verse transitions and improved gapless playback.
+- Bug Fixes: Resolved various stability issues during background recitation.
