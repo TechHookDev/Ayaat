@@ -1,17 +1,29 @@
 # Release Notes - v1.1.0
 
-## Google Play (Android)
+## 🇺🇸 English
 What's New:
 - 🎙️ New Reciter: Added Yasser Al-Dosari for a more diverse listening experience.
-- 🎧 Premium Background Player: Complete redesign of the notification with branded titles, artwork stability, and better system integration.
-- 🎨 UI Polish: Absolute centering of the reciters name in the selector for a balanced look.
-- 🕋 Gapless Recitation: Faster, smoother transitions between verses.
-- 🛠️ Stability: Fixed several background playback crashes and improved metadata accuracy on Samsung devices.
+- 🎧 Premium Background Player: Complete redesign of the notification with branded titles, artwork stability, and better system integration (especially for Samsung).
+- 🎨 UI Polish: Absolute centering of the reciter's name in the selector for a balanced, premium look.
+- 🕋 Gapless Recitation: Smoother and faster transitions between verses.
+- 🛠️ Stability: Fixed background playback crashes and improved metadata accuracy across all devices.
 
-## Apple App Store (iOS)
-What's New:
-- New Reciter added: Yasser Al-Dosari.
-- Enhanced Background Audio: Redesigned media controls for a more premium experience.
-- UI Improvements: Branded notification titles and centered reciter selection.
-- Performance: Smoother verse transitions and improved gapless playback.
-- Bug Fixes: Resolved various stability issues during background recitation.
+---
+
+## 🇸🇦 العربية (Arabic)
+ما الجديد:
+- 🎙️ قارئ جديد: إضافة القارئ ياسر الدوسري لتجربة استماع أكثر تنوعاً.
+- 🎧 مشغل خلفية مميز (Premium): إعادة تصميم كاملة للتنبيهات مع عناوين تحمل شعار التطبيق واستقرار في عرض الصور وتكامل أفضل مع النظام (خاصة أجهزة سامسونج).
+- 🎨 تحسين الواجهة: توسيط اسم القارئ في قائمة الاختيار لمظهر أكثر توازناً واحترافية.
+- 🕋 تلاوة متواصلة: انتقال أسلس وأسرع بين الآيات لتجربة استماع متكاملة.
+- 🛠️ الاستقرار: إصلاح العديد من الأعطال في التشغيل الخلفي وتحسين دقة البيانات على جميع الأجهزة.
+
+---
+
+## 🇫🇷 Français (French)
+Nouveautés :
+- 🎙️ Nouveau Récitateur : Ajout de Yasser Al-Dosari pour une expérience d'écoute diversifiée.
+- 🎧 Lecteur en arrière-plan Premium : Refonte complète de la notification avec des titres personnalisés, une meilleure stabilité visuelle et une intégration système optimale (notamment pour Samsung).
+- 🎨 Amélioration de l'interface : Centrage du nom du récitateur dans le menu de sélection pour un design plus équilibré.
+- 🕋 Récitation sans couture : Transitions plus fluides et rapides entre les versets.
+- 🛠️ Stabilité : Correction de plusieurs plantages en arrière-plan et amélioration de l'affichage des métadonnées sur tous les appareils.
