@@ -5,7 +5,10 @@ import 'package:http/http.dart' as http;
 import '../services/language_service.dart';
 import '../services/preferences_service.dart';
 import '../services/progress_service.dart';
-import 'package:audioplayers/audioplayers.dart';
+import '../services/audio_service.dart';
+import '../widgets/reciter_selector.dart';
+import '../widgets/mini_player.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class VerseDetailScreen extends StatefulWidget {
@@ -27,20 +30,21 @@ class VerseDetailScreen extends StatefulWidget {
 class _VerseDetailScreenState extends State<VerseDetailScreen> {
   final ScrollController _scrollController = ScrollController();
   List<Map<String, dynamic>> _verses = [];
-  String _surahName = '';
+  Map<AppLanguage, String> _surahNames = {};
+  String _surahName = ''; // Display name for current language
   bool _isLoading = true;
   String? _error;
   int? _targetVerseIndex;
   final Map<int, GlobalKey> _verseKeys = {};
 
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioService _audioService = AudioService();
   bool _isPlaying = false;
   int? _currentlyPlayingIndex;
   Map<String, dynamic>? _bookmark;
   double _fontSize = 24.0;
   final PreferencesService _prefsService = PreferencesService();
   final ProgressService _progressService = ProgressService();
-  
+
   // Progressive Rendering State
   int _renderedVerseCount = 0;
   static const int _initialRenderAmount = 15;
@@ -49,9 +53,40 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _audioService.initialize();
+    _audioService.addListener(_onAudioStateChanged);
     _loadSurah();
     _loadPreferences();
-    _setupAudioPlayer();
+  }
+
+  void _onAudioStateChanged() {
+    if (mounted) {
+      final oldIndex = _currentlyPlayingIndex;
+      final newIndex = _audioService.currentAyahIndex;
+      
+      setState(() {
+        _isPlaying = _audioService.isPlaying;
+        _currentlyPlayingIndex = newIndex;
+        
+        // IMPORTANT: If the playing verse is beyond our current render batch,
+        // we MUST increase _renderedVerseCount immediately so the widget exists.
+        if (newIndex != null && newIndex >= _renderedVerseCount) {
+          _renderedVerseCount = newIndex + 5;
+          if (_renderedVerseCount > _verses.length) {
+            _renderedVerseCount = _verses.length;
+          }
+        }
+      });
+
+      // Auto-scroll to the current verse if it changed
+      if (newIndex != null && newIndex != oldIndex) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _scrollToTargetVerse(newIndex);
+          }
+        });
+      }
+    }
   }
 
   Future<void> _loadPreferences() async {
@@ -65,22 +100,10 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     }
   }
 
-  void _setupAudioPlayer() {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state == PlayerState.playing;
-          if (state == PlayerState.completed) {
-            _currentlyPlayingIndex = null;
-          }
-        });
-      }
-    });
-  }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _audioService.removeListener(_onAudioStateChanged);
     _scrollController.dispose();
     super.dispose();
   }
@@ -106,17 +129,33 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         final surahData = data['data'];
         final verses = surahData['ayahs'] ?? [];
 
-        // Get surah name in the correct language
-        _surahName = _getSurahName(surahData);
+        // Get surah names in all languages
+        _surahNames = {
+          AppLanguage.arabic: surahData['name'] ?? 'سورة ${widget.surahNumber}',
+          AppLanguage.english: surahData['englishName'] ?? 'Surah ${widget.surahNumber}',
+          AppLanguage.french: surahData['englishName'] ?? 'Sourate ${widget.surahNumber}',
+        };
+        _surahName = _surahNames[widget.language] ?? _surahNames[AppLanguage.arabic]!;
 
         _verses = verses
             .map<Map<String, dynamic>>(
               (v) => {
                 'numberInSurah': v['numberInSurah'] as int,
                 'text': v['text'] as String,
+                'number': v['number'] as int, // GLOBAL ayah number for audio!
               },
             )
             .toList();
+
+        // Debug: Log first few verses to verify global numbers
+        debugPrint(
+          '📖 Loaded ${_verses.length} verses for Surah ${widget.surahNumber}',
+        );
+        for (int i = 0; i < (_verses.length < 5 ? _verses.length : 5); i++) {
+          debugPrint(
+            '  Verse ${i + 1}: numberInSurah=${_verses[i]['numberInSurah']}, global=${_verses[i]['number']}',
+          );
+        }
 
         // Find target verse index
         _targetVerseIndex = null;
@@ -134,7 +173,7 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         setState(() {
           // Instead of finishing loading here, we start the rendering pipeline
         });
-        
+
         _startProgressiveRendering();
 
         // Scroll after build - wait for SingleChildScrollView to render
@@ -160,15 +199,15 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
 
   void _startProgressiveRendering() {
     if (!mounted) return;
-    
+
     // If we have a target verse, we need to render at least up to that verse immediately
     int targetRender = _verses.length;
     if (_targetVerseIndex != null) {
-        targetRender = _targetVerseIndex! + _initialRenderAmount;
-        if (targetRender > _verses.length) targetRender = _verses.length;
+      targetRender = _targetVerseIndex! + _initialRenderAmount;
+      if (targetRender > _verses.length) targetRender = _verses.length;
     } else {
-        targetRender = _initialRenderAmount;
-        if (targetRender > _verses.length) targetRender = _verses.length;
+      targetRender = _initialRenderAmount;
+      if (targetRender > _verses.length) targetRender = _verses.length;
     }
 
     setState(() {
@@ -192,7 +231,7 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         });
         // Continue rendering next batch in the next microtask
         if (_renderedVerseCount < _verses.length) {
-           _renderNextBatch();
+          _renderNextBatch();
         }
       }
     });
@@ -222,56 +261,80 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   }
 
   void _scrollToTargetVerse(int verseIndex) {
-    if (!_scrollController.hasClients) {
-      debugPrint('✗ ScrollController not ready');
-      return;
-    }
+    if (!_scrollController.hasClients) return;
 
     final key = _verseKeys[verseIndex];
-    if (key == null) {
-      debugPrint('✗ No key for verse index $verseIndex');
-      return;
-    }
+    if (key == null) return;
 
     final context = key.currentContext;
     if (context == null) {
-      debugPrint('✗ Widget not found for verse index $verseIndex');
+      // If context is null, it might be because the widget is still building
+      // after our setState above. we can try one more delay.
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          final retryContext = key.currentContext;
+          if (retryContext != null) {
+            Scrollable.ensureVisible(
+              retryContext,
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeInOut,
+              alignment: 0.1,
+            );
+          }
+        }
+      });
       return;
     }
 
-    // Use ensureVisible for precise scrolling
     Scrollable.ensureVisible(
       context,
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeInOut,
-      alignment: 0.3, // 30% from top
+      alignment: 0.1, // 10% from top (better focus)
     );
 
-    debugPrint('✓ Successfully scrolled to verse ${widget.numberInSurah}');
+    debugPrint('✓ Scrolled to verse index $verseIndex');
   }
 
   Future<void> _toggleBookmark(int verseInSurah, int globalNumber) async {
-    final isCurrentlyBookmarked = _bookmark?['surah'] == widget.surahNumber && _bookmark?['verse'] == verseInSurah;
-    
+    final isCurrentlyBookmarked =
+        _bookmark?['surah'] == widget.surahNumber &&
+        _bookmark?['verse'] == verseInSurah;
+
     if (isCurrentlyBookmarked) {
       await _prefsService.removeBookmark();
       if (mounted) setState(() => _bookmark = null);
       if (mounted) {
-        final msg = widget.language == AppLanguage.arabic ? 'تم إزالة العلامة المرجعية' : (widget.language == AppLanguage.french ? 'Signet supprimé' : 'Bookmark removed');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg, style: GoogleFonts.outfit()), duration: const Duration(seconds: 2)));
+        final msg = widget.language == AppLanguage.arabic
+            ? 'تم إزالة العلامة المرجعية'
+            : (widget.language == AppLanguage.french
+                  ? 'Signet supprimé'
+                  : 'Bookmark removed');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg, style: GoogleFonts.outfit()),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } else {
-      await _prefsService.saveBookmark(
-        widget.surahNumber,
-        verseInSurah,
-      );
+      await _prefsService.saveBookmark(widget.surahNumber, verseInSurah);
       // Gamification: Give points for intentional bookmarking
       await _progressService.addPoints(10);
       final newBookmark = await _prefsService.getBookmark();
       if (mounted) setState(() => _bookmark = newBookmark);
       if (mounted) {
-        final msg = widget.language == AppLanguage.arabic ? 'تم حفظ العلامة المرجعية' : (widget.language == AppLanguage.french ? 'Signet ajouté' : 'Bookmark added');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg, style: GoogleFonts.outfit()), duration: const Duration(seconds: 2)));
+        final msg = widget.language == AppLanguage.arabic
+            ? 'تم حفظ العلامة المرجعية'
+            : (widget.language == AppLanguage.french
+                  ? 'Signet ajouté'
+                  : 'Bookmark added');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg, style: GoogleFonts.outfit()),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -282,15 +345,31 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     setState(() => _fontSize = newSize);
   }
 
-  Future<void> _playAudio(int globalVerseNumber, int index) async {
+  Future<void> _playAudio(
+    int globalVerseNumber,
+    int index, {
+    bool continuousMode = true, // Default to continuous playback
+    bool forceRestart = false,
+  }) async {
     try {
-      if (_currentlyPlayingIndex == index && _isPlaying) {
-        await _audioPlayer.pause();
+      if (!forceRestart && _currentlyPlayingIndex == index && _isPlaying) {
+        await _audioService.pause();
       } else {
+        // Debug logging
+        debugPrint(
+          '▶️ Playing Surah ${widget.surahNumber}, Ayah index: $index, Global: $globalVerseNumber',
+        );
+
         // Gamification: Give points for audio engagement
         await _progressService.addPoints(5);
-        final url = 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$globalVerseNumber.mp3';
-        await _audioPlayer.play(UrlSource(url));
+        await _audioService.playAyah(
+          globalAyahNumber: globalVerseNumber,
+          surahNumber: widget.surahNumber,
+          ayahIndex: index,
+          surahNames: _surahNames,
+          verses: _verses,
+          continuousMode: continuousMode,
+        );
         if (mounted) {
           setState(() {
             _currentlyPlayingIndex = index;
@@ -298,11 +377,50 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         }
       }
     } catch (e) {
+      debugPrint('❌ Error playing audio: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Audio failed: $e', style: GoogleFonts.outfit())),
+          SnackBar(
+            content: Text('Audio failed: $e', style: GoogleFonts.outfit()),
+          ),
         );
       }
+    }
+  }
+
+  Future<void> _playSurah() async {
+    if (_verses.isEmpty) return;
+
+    try {
+      // Gamification: Give points for playing entire surah
+      await _progressService.addPoints(10);
+      await _audioService.playSurah(
+        surahNumber: widget.surahNumber,
+        surahNames: _surahNames,
+        verses: _verses,
+      );
+      if (mounted) {
+        setState(() {
+          _currentlyPlayingIndex = 0;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Audio failed: $e', style: GoogleFonts.outfit()),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopAudio() async {
+    await _audioService.stop();
+    if (mounted) {
+      setState(() {
+        _currentlyPlayingIndex = null;
+      });
     }
   }
 
@@ -329,7 +447,10 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
                       child: Center(
                         child: Text(
                           _error!,
-                          style: GoogleFonts.amiri(fontSize: 16, color: Colors.red),
+                          style: GoogleFonts.amiri(
+                            fontSize: 16,
+                            color: Colors.red,
+                          ),
                         ),
                       ),
                     )
@@ -341,6 +462,12 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
                     )
                   else
                     Expanded(child: _buildVersesList()),
+                  // Mini Player - shows when audio is playing
+                  MiniPlayer(
+                    audioService: _audioService,
+                    language: widget.language,
+                  ),
+                  const SizedBox(height: 8),
                 ],
               );
             },
@@ -359,7 +486,11 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
           children: [
             IconButton(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white70, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios,
+                color: Colors.white70,
+                size: 20,
+              ),
             ),
             Expanded(
               child: Text(
@@ -382,15 +513,39 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
               children: [
                 IconButton(
                   onPressed: () => _changeFontSize(-2),
-                  icon: const Icon(Icons.remove, color: Colors.white70, size: 18),
+                  icon: const Icon(
+                    Icons.remove,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
-                 Text('A', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 14)),
-                 const SizedBox(width: 8),
-                 Text('${_fontSize.toInt()}', style: GoogleFonts.outfit(color: const Color(0xFFFFD700), fontWeight: FontWeight.bold, fontSize: 14)),
-                 const SizedBox(width: 8),
-                 Text('A', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  'A',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white54,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${_fontSize.toInt()}',
+                  style: GoogleFonts.outfit(
+                    color: const Color(0xFFFFD700),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'A',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white54,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 IconButton(
                   onPressed: () => _changeFontSize(2),
                   icon: const Icon(Icons.add, color: Colors.white70, size: 18),
@@ -430,11 +585,10 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
                       : TextDirection.ltr,
                 ),
               ),
-              const SizedBox(width: 48), // Balance with back button
             ],
           ),
           const SizedBox(height: 16),
-          // Font Size Controls
+          // Font Size Controls and Stop Button
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -442,19 +596,26 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
                 onPressed: () => _changeFontSize(-2),
                 icon: const Icon(Icons.remove, color: Colors.white70, size: 20),
               ),
-               Text(
+              Text(
                 'A',
                 style: GoogleFonts.outfit(color: Colors.white54, fontSize: 16),
               ),
-               const SizedBox(width: 12),
-               Text(
+              const SizedBox(width: 12),
+              Text(
                 '${_fontSize.toInt()}',
-                style: GoogleFonts.outfit(color: const Color(0xFFFFD700), fontWeight: FontWeight.bold),
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFFFD700),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-               const SizedBox(width: 12),
-               Text(
+              const SizedBox(width: 12),
+              Text(
                 'A',
-                style: GoogleFonts.outfit(color: Colors.white54, fontSize: 24, fontWeight: FontWeight.bold),
+                style: GoogleFonts.outfit(
+                  color: Colors.white54,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               IconButton(
                 onPressed: () => _changeFontSize(2),
@@ -462,9 +623,52 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          // Reciter Selector
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: ReciterSelector(
+              audioService: _audioService,
+              language: widget.language,
+              onReciterChanged: () {
+                // Restart current ayah with new reciter if we were playing or had an index
+                if (_currentlyPlayingIndex != null) {
+                  final verse = _verses[_currentlyPlayingIndex!];
+                  final globalNumber = verse['number'] as int;
+                  _playAudio(
+                    globalNumber,
+                    _currentlyPlayingIndex!,
+                    forceRestart: true,
+                  );
+                }
+              },
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _getPlaySurahText() {
+    switch (widget.language) {
+      case AppLanguage.arabic:
+        return 'تشغيل';
+      case AppLanguage.french:
+        return 'Lire';
+      case AppLanguage.english:
+        return 'Play';
+    }
+  }
+
+  String _getPauseText() {
+    switch (widget.language) {
+      case AppLanguage.arabic:
+        return 'إيقاف';
+      case AppLanguage.french:
+        return 'Pause';
+      case AppLanguage.english:
+        return 'Pause';
+    }
   }
 
   Widget _buildVersesList() {
@@ -479,26 +683,33 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         children: [
           // Bismillah header (except Surah 9)
           if (widget.surahNumber != 9) _buildBismillah(),
-          
+
           // Render the batches
-          ...versesToRender.asMap().entries.where((entry) {
-            // Completely hide Verse 1 (index 0) of Al-Fatiha to remove the duplicate Bismillah block
-            if (widget.surahNumber == 1 && entry.key == 0) return false;
-            return true;
-          }).map((entry) {
-            return _buildVerseItem(entry.key, entry.value);
-          }),
-          
+          ...versesToRender
+              .asMap()
+              .entries
+              .where((entry) {
+                // Completely hide Verse 1 (index 0) of Al-Fatiha to remove the duplicate Bismillah block
+                if (widget.surahNumber == 1 && entry.key == 0) return false;
+                return true;
+              })
+              .map((entry) {
+                return _buildVerseItem(entry.key, entry.value);
+              }),
+
           // Show subtle loading indicator at bottom if still rendering in background
           if (_renderedVerseCount < _verses.length)
-             const Padding(
-                padding: EdgeInsets.all(20.0),
-                child: SizedBox(
-                   width: 24, 
-                   height: 24, 
-                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54)
+            const Padding(
+              padding: EdgeInsets.all(20.0),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white54,
                 ),
-             ),
+              ),
+            ),
         ],
       ),
     );
@@ -522,11 +733,13 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   Widget _buildVerseItem(int verseIndex, Map<String, dynamic> verse) {
     final isTarget = verseIndex == _targetVerseIndex;
     final verseNumber = verse['numberInSurah'] as int;
-    final globalNumber = verse['number'] ?? 0; // Guard for global number if missing in base API mapping, though we added it in MushafPro
+    final globalNumber =
+        verse['number'] ??
+        0; // Guard for global number if missing in base API mapping, though we added it in MushafPro
 
     // Shift display verse number for Al-Fatiha so Al-Hamdu lillahi is Verse 1
-    final int displayVerseNumber = (widget.surahNumber == 1 && verseNumber > 1) 
-        ? verseNumber - 1 
+    final int displayVerseNumber = (widget.surahNumber == 1 && verseNumber > 1)
+        ? verseNumber - 1
         : verseNumber;
 
     String text = verse['text'];
@@ -542,42 +755,67 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     final goldColor = const Color(0xFFFFD700);
     final textColor = isTarget ? goldColor : Colors.white;
     final numberColor = isTarget ? goldColor : Colors.white54;
-    
-    final isBookmarked = _bookmark?['surah'] == widget.surahNumber && _bookmark?['verse'] == verseNumber;
-    final isPlaying = _currentlyPlayingIndex == verseIndex && _isPlaying;
+
+    final isBookmarked =
+        _bookmark?['surah'] == widget.surahNumber &&
+        _bookmark?['verse'] == verseNumber;
+    // Check if this specific verse is playing from audio service
+    final bool isThisVersePlaying =
+        _audioService.currentSurahNumber == widget.surahNumber &&
+        _audioService.currentAyahIndex == verseIndex &&
+        _audioService.isPlaying;
 
     return Column(
-      key: isTarget ? _verseKeys[verseIndex] : null,
+      key: _verseKeys.putIfAbsent(verseIndex, () => GlobalKey()),
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Action Bar (Audio + Bookmark)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton(
-              onPressed: () => _playAudio(globalNumber == 0 ? verseNumber + ((widget.surahNumber-1)*7) : globalNumber, verseIndex), // Basic fallback if globalNumber not mapped
-              icon: Icon(
-                isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
-                color: isPlaying ? const Color(0xFFFFD700) : Colors.white54,
-                size: 28,
+            // Simple Play/Pause Button
+            GestureDetector(
+              onTap: () => _playAudio(globalNumber, verseIndex),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  isThisVersePlaying
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_fill,
+                  color: isThisVersePlaying
+                      ? const Color(0xFFFFD700)
+                      : Colors.white54,
+                  size: 28,
+                ),
               ),
             ),
             IconButton(
-              onPressed: () => _toggleBookmark(verseNumber, globalNumber == 0 ? verseNumber : globalNumber),
+              onPressed: () => _toggleBookmark(verseNumber, globalNumber),
               icon: Icon(
                 isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                color: isBookmarked ? const Color(0xFFFFD700) : Colors.white54,
-                size: 24,
+                color: isBookmarked ? const Color(0xFFFFD700) : Colors.white24,
+                size: 22,
               ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ],
         ),
-        
+
         Text(
           text,
           style: widget.language == AppLanguage.arabic
-              ? GoogleFonts.amiri(fontSize: _fontSize, color: textColor, height: 1.8)
-              : GoogleFonts.outfit(fontSize: _fontSize - 6, color: textColor, height: 1.6),
+              ? GoogleFonts.amiri(
+                  fontSize: _fontSize,
+                  color: textColor,
+                  height: 1.8,
+                )
+              : GoogleFonts.outfit(
+                  fontSize: _fontSize - 6,
+                  color: textColor,
+                  height: 1.6,
+                ),
           textAlign: TextAlign.center,
           textDirection: widget.language == AppLanguage.arabic
               ? TextDirection.rtl
@@ -595,6 +833,17 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         const Divider(color: Colors.white24, height: 32),
       ],
     );
+  }
+
+  String _getPlayingText() {
+    switch (widget.language) {
+      case AppLanguage.arabic:
+        return 'يُتلى الآن';
+      case AppLanguage.english:
+        return 'Playing';
+      case AppLanguage.french:
+        return 'En cours';
+    }
   }
 
   String _removeBismillah(String text) {

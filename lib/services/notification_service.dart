@@ -772,47 +772,5 @@ class NotificationService {
     await prefs.setBool(_onboardingCompleteKey, complete);
   }
 
-  /// Send an immediate test notification
-  Future<void> sendTestNotification() async {
-    try {
-      final langService = LanguageService();
-      final currentLanguage = await langService.getCurrentLanguage();
-      final verse = await _quranApi.getRandomVerse(language: currentLanguage);
 
-      final now = tz.TZDateTime.now(tz.local);
-      final scheduledDate = now.add(const Duration(minutes: 1));
-
-      await _notifications.zonedSchedule(
-        99, // Different ID for test notifications
-        'آيات - Ayaat (Test Background)',
-        verse.text,
-        scheduledDate,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'ayaat_daily_v2', // Updated to match new channel ID
-            'Daily Quran Verse',
-            channelDescription: 'Daily Quran verse notifications',
-            importance: Importance.max,
-            priority: Priority.max,
-            styleInformation: BigTextStyleInformation(
-              verse.text,
-              contentTitle: 'آيات - Ayaat',
-              summaryText: verse.reference,
-            ),
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.alarmClock,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        payload: verse.number.toString(),
-      );
-    } catch (e) {
-      debugPrint('Error sending test notification: $e');
-    }
-  }
 }

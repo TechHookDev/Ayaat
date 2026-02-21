@@ -4,6 +4,8 @@ import '../models/verse.dart';
 import '../services/language_service.dart';
 import '../services/notification_service.dart';
 import '../services/quran_api.dart';
+import '../services/audio_service.dart';
+import '../widgets/mini_player.dart';
 import 'settings_screen.dart';
 import 'verse_detail_screen.dart';
 import 'surah_list_screen.dart';
@@ -22,11 +24,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final LanguageService _languageService = LanguageService();
   final NotificationService _notificationService = NotificationService();
   final ProgressService _progressService = ProgressService();
+  final AudioService _audioService = AudioService();
   AppLanguage _currentLanguage = AppLanguage.arabic;
   Map<String, Verse>? _currentVerses;
   bool _isLoading = true;
   String? _error;
-  
+
   // Progress State
   int _currentStreak = 0;
   int _totalPoints = 0;
@@ -34,18 +37,32 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _audioService.initialize();
+    _audioService.addListener(_onAudioStateChanged);
     _loadLanguage();
     _loadProgress();
     _loadVerses();
   }
 
+  @override
+  void dispose() {
+    _audioService.removeListener(_onAudioStateChanged);
+    super.dispose();
+  }
+
+  void _onAudioStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   Future<void> _loadProgress() async {
     // Check if streak was broken before fetching
     await _progressService.checkStreakStatus();
-    
+
     final streak = await _progressService.getCurrentStreak();
     final points = await _progressService.getTotalPoints();
-    
+
     if (mounted) {
       setState(() {
         _currentStreak = streak;
@@ -126,44 +143,22 @@ class _HomeScreenState extends State<HomeScreen> {
   String _getNewVerseText() {
     switch (_currentLanguage) {
       case AppLanguage.arabic:
-        return 'آية جديدة';
+        return 'آية أخرى';
       case AppLanguage.english:
-        return 'New Verse';
+        return 'Another Verse';
       case AppLanguage.french:
-        return 'Nouveau Verset';
-    }
-  }
-
-  String _getTestNotificationText() {
-    switch (_currentLanguage) {
-      case AppLanguage.arabic:
-        return 'اختبار التنبيه';
-      case AppLanguage.english:
-        return 'Test Notification';
-      case AppLanguage.french:
-        return 'Tester Notification';
+        return 'Un autre verset';
     }
   }
 
   String _getContinueReadingText() {
     switch (_currentLanguage) {
       case AppLanguage.arabic:
-        return 'متابعة القراءة';
+        return 'أكمل وردك';
       case AppLanguage.english:
         return 'Continue Reading';
       case AppLanguage.french:
-        return 'Continuer la Lecture';
-    }
-  }
-
-  String _getNotificationSentText() {
-    switch (_currentLanguage) {
-      case AppLanguage.arabic:
-        return 'تم إرسال تنبيه تجريبي';
-      case AppLanguage.english:
-        return 'Test notification sent';
-      case AppLanguage.french:
-        return 'Notification de test envoyée';
+        return 'Continuer la lecture';
     }
   }
 
@@ -181,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showPointsGuide() {
     final isArabic = _currentLanguage == AppLanguage.arabic;
     final isFrench = _currentLanguage == AppLanguage.french;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -209,7 +204,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Text(
-              isArabic ? 'كيف تكسب نقاط آيات؟' : (isFrench ? 'Comment gagner des points ?' : 'How to earn Points?'),
+              isArabic
+                  ? 'كيف تكسب نقاط آيات؟'
+                  : (isFrench
+                        ? 'Comment gagner des points ?'
+                        : 'How to earn Points?'),
               style: GoogleFonts.amiri(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -225,26 +224,54 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildGuideItem(
                       Icons.local_fire_department,
                       Colors.orange,
-                      isArabic ? 'زيارة يومية' : (isFrench ? 'Visite quotidienne' : 'Daily Visit'),
-                      isArabic ? 'افتح المصحف يومياً (+50 XP)' : (isFrench ? 'Ouvrez le Mushaf chaque jour (+50 XP)' : 'Open the Mushaf daily (+50 XP)'),
+                      isArabic
+                          ? 'زيارة يومية'
+                          : (isFrench ? 'Visite quotidienne' : 'Daily Visit'),
+                      isArabic
+                          ? 'افتح المصحف يومياً (+50 XP)'
+                          : (isFrench
+                                ? 'Ouvrez le Mushaf chaque jour (+50 XP)'
+                                : 'Open the Mushaf daily (+50 XP)'),
                     ),
                     _buildGuideItem(
                       Icons.headset,
                       const Color(0xFFFFD700),
-                      isArabic ? 'استماع للآيات' : (isFrench ? 'Écoute de versets' : 'Audio Engagement'),
-                      isArabic ? 'استمع لآية كاملة (+5 XP)' : (isFrench ? 'Écoutez un verset complet (+5 XP)' : 'Listen to a full verse (+5 XP)'),
+                      isArabic
+                          ? 'استماع للآيات'
+                          : (isFrench
+                                ? 'Écoute de versets'
+                                : 'Audio Engagement'),
+                      isArabic
+                          ? 'استمع لآية كاملة (+5 XP)'
+                          : (isFrench
+                                ? 'Écoutez un verset complet (+5 XP)'
+                                : 'Listen to a full verse (+5 XP)'),
                     ),
                     _buildGuideItem(
                       Icons.bookmark,
                       Colors.blueAccent,
-                      isArabic ? 'حفظ العلامات' : (isFrench ? 'Gestion des favoris' : 'Bookmarking'),
-                      isArabic ? 'حفظ موضع القراءة (+10 XP)' : (isFrench ? 'Enregistrez votre position (+10 XP)' : 'Save your reading position (+10 XP)'),
+                      isArabic
+                          ? 'حفظ العلامات'
+                          : (isFrench ? 'Gestion des favoris' : 'Bookmarking'),
+                      isArabic
+                          ? 'حفظ موضع القراءة (+10 XP)'
+                          : (isFrench
+                                ? 'Enregistrez votre position (+10 XP)'
+                                : 'Save your reading position (+10 XP)'),
                     ),
                     _buildGuideItem(
                       Icons.stars,
                       const Color(0xFFFFD700),
-                      isArabic ? 'إتمام السورة' : (isFrench ? 'Achèvement de sourate' : 'Surah Completion'),
-                      isArabic ? 'الاستماع لنهاية السورة (+50 XP)' : (isFrench ? 'Ecoutez jusqu\'à la fin (+50 XP)' : 'Finish audio for a full Surah (+50 XP)'),
+                      isArabic
+                          ? 'إتمام السورة'
+                          : (isFrench
+                                ? 'Achèvement de sourate'
+                                : 'Surah Completion'),
+                      isArabic
+                          ? 'الاستماع لنهاية السورة (+50 XP)'
+                          : (isFrench
+                                ? 'Ecoutez jusqu\'à la fin (+50 XP)'
+                                : 'Finish audio for a full Surah (+50 XP)'),
                     ),
                   ],
                 ),
@@ -259,7 +286,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   backgroundColor: const Color(0xFFFFD700),
                   foregroundColor: const Color(0xFF0D1B2A),
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 child: Text(
                   isArabic ? 'فهمت' : (isFrench ? 'Compris' : 'Understood'),
@@ -273,7 +302,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGuideItem(IconData icon, Color color, String title, String description) {
+  Widget _buildGuideItem(
+    IconData icon,
+    Color color,
+    String title,
+    String description,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
@@ -368,6 +402,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildStatsDashboard(),
         Expanded(child: _buildVerseCard()),
         _buildActions(),
+        // Mini Player - shows when audio is playing
+        MiniPlayer(audioService: _audioService, language: _currentLanguage),
         const SizedBox(height: 20),
       ],
     );
@@ -394,17 +430,17 @@ class _HomeScreenState extends State<HomeScreen> {
           flex: 3,
           child: Column(
             children: [
-               Expanded(
-                   child: Padding(
-                       padding: const EdgeInsets.only(top: 10, right: 20),
-                       child: _buildVerseCard()
-                   )
-               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(child: _buildActions(isLandscape: true)),
-                ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10, right: 20),
+                  child: _buildVerseCard(),
+                ),
+              ),
+              _buildActions(isLandscape: true),
+              // Mini Player - shows when audio is playing
+              MiniPlayer(
+                audioService: _audioService,
+                language: _currentLanguage,
               ),
               const SizedBox(height: 10),
             ],
@@ -416,7 +452,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader({bool isLandscape = false}) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 10 : 20),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: isLandscape ? 10 : 20,
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -442,10 +481,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.menu_book, color: const Color(0xFFFFD700), size: isLandscape ? 20 : 24),
+                      Icon(
+                        Icons.menu_book,
+                        color: const Color(0xFFFFD700),
+                        size: isLandscape ? 20 : 24,
+                      ),
                       const SizedBox(height: 2),
                       Text(
-                        _currentLanguage == AppLanguage.arabic ? 'المصحف' : 'Mushaf',
+                        _currentLanguage == AppLanguage.arabic
+                            ? 'المصحف'
+                            : 'Mushaf',
                         style: GoogleFonts.amiri(
                           fontSize: isLandscape ? 8 : 10,
                           color: const Color(0xFFFFD700),
@@ -458,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          
+
           // Centered App Title
           Center(
             child: Text(
@@ -484,16 +529,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
                 // Reload language when returning from settings
                 await _loadLanguage();
-                
+
                 // Reload progress as they might have read something in Mushaf Pro
                 await _loadProgress();
-                
+
                 // Only fetch a new verse if we didn't have one (e.g., previous network error)
                 if (_currentVerses == null || _error != null) {
                   await _loadVerses();
                 }
               },
-              icon: Icon(Icons.settings, color: Colors.white70, size: isLandscape ? 24 : 28),
+              icon: Icon(
+                Icons.settings,
+                color: Colors.white70,
+                size: isLandscape ? 24 : 28,
+              ),
             ),
           ),
         ],
@@ -502,8 +551,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStatsDashboard() {
-    String streakLabel = _currentLanguage == AppLanguage.arabic ? 'يوم متتالي' : _currentLanguage == AppLanguage.french ? 'Jours consécutifs' : 'Day Streak';
-    String pointsLabel = _currentLanguage == AppLanguage.arabic ? 'نقطة آيات' : _currentLanguage == AppLanguage.french ? 'Points Ayaat' : 'Ayaat Points';
+    String streakLabel = _currentLanguage == AppLanguage.arabic
+        ? 'يوم متتالي'
+        : _currentLanguage == AppLanguage.french
+        ? 'Jours consécutifs'
+        : 'Day Streak';
+    String pointsLabel = _currentLanguage == AppLanguage.arabic
+        ? 'نقطة آيات'
+        : _currentLanguage == AppLanguage.french
+        ? 'Points Ayaat'
+        : 'Ayaat Points';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20).copyWith(bottom: 20),
@@ -525,7 +582,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.orange.withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
+                child: const Icon(
+                  Icons.local_fire_department,
+                  color: Colors.orange,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Column(
@@ -541,15 +602,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Text(
                     streakLabel,
-                    style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12),
+                    style: GoogleFonts.outfit(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
             ],
           ),
-          
+
           Container(height: 30, width: 1, color: Colors.white10),
-          
+
           // 📖 Ayahs Read Stat
           Row(
             children: [
@@ -559,7 +623,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: const Color(0xFFFFD700).withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.menu_book, color: Color(0xFFFFD700), size: 18),
+                child: const Icon(
+                  Icons.menu_book,
+                  color: Color(0xFFFFD700),
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 12),
               Column(
@@ -578,13 +646,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 4),
                       GestureDetector(
                         onTap: _showPointsGuide,
-                        child: const Icon(Icons.info_outline, color: Colors.white38, size: 14),
+                        child: const Icon(
+                          Icons.info_outline,
+                          color: Colors.white38,
+                          size: 14,
+                        ),
                       ),
                     ],
                   ),
                   Text(
                     pointsLabel,
-                    style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12),
+                    style: GoogleFonts.outfit(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -678,7 +753,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           textDirection: TextDirection.rtl,
                           fontFamily: 'Amiri',
                           fontSize: 24,
-                          reference: _currentVerses?['arabic']?.arabicReference ?? '',
+                          reference:
+                              _currentVerses?['arabic']?.arabicReference ?? '',
                         ),
                       ),
                       MapEntry(
@@ -689,7 +765,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           textDirection: TextDirection.ltr,
                           fontFamily: 'Outfit',
                           fontSize: 18,
-                          reference: _currentVerses?['english']?.englishReference ?? '',
+                          reference:
+                              _currentVerses?['english']?.englishReference ??
+                              '',
                         ),
                       ),
                       MapEntry(
@@ -700,7 +778,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           textDirection: TextDirection.ltr,
                           fontFamily: 'Outfit',
                           fontSize: 18,
-                          reference: _currentVerses?['french']?.frenchReference ?? '',
+                          reference:
+                              _currentVerses?['french']?.frenchReference ?? '',
                         ),
                       ),
                     ];
@@ -716,7 +795,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     for (int i = 0; i < sections.length; i++) {
                       widgets.add(sections[i].value);
                       if (i < sections.length - 1) {
-                        widgets.add(const Divider(color: Colors.white24, height: 32));
+                        widgets.add(
+                          const Divider(color: Colors.white24, height: 32),
+                        );
                       }
                     }
                     return widgets;
@@ -824,17 +905,85 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String _getPlayAudioText() {
+    switch (_currentLanguage) {
+      case AppLanguage.arabic:
+        return 'استماع للآية';
+      case AppLanguage.english:
+        return 'Listen to Verse';
+      case AppLanguage.french:
+        return 'Écouter le Verset';
+    }
+  }
+
+  String _getStopAudioText() {
+    switch (_currentLanguage) {
+      case AppLanguage.arabic:
+        return 'إيقاف التلاوة';
+      case AppLanguage.english:
+        return 'Stop Recitation';
+      case AppLanguage.french:
+        return 'Arrêter la Récitation';
+    }
+  }
+
+  Future<void> _playCurrentVerse() async {
+    if (_currentVerses == null || _currentVerses!['arabic'] == null) return;
+
+    final arabicVerse = _currentVerses!['arabic']!;
+
+    // Check if this verse is already playing
+    if (_audioService.currentSurahNumber == arabicVerse.surahNumber &&
+        _audioService.currentAyahIndex == arabicVerse.numberInSurah - 1 &&
+        _audioService.isPlaying) {
+      await _audioService.pause();
+    } else if (_audioService.currentSurahNumber == arabicVerse.surahNumber &&
+        _audioService.currentAyahIndex == arabicVerse.numberInSurah - 1 &&
+        !_audioService.isPlaying) {
+      await _audioService.play();
+    } else {
+      // Play the verse
+      await _progressService.addPoints(5);
+
+      // Navigate to verse detail screen to play the audio there
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VerseDetailScreen(
+            surahNumber: arabicVerse.surahNumber,
+            numberInSurah: arabicVerse.numberInSurah,
+            language: _currentLanguage,
+          ),
+        ),
+      );
+      await _loadProgress();
+    }
+  }
+
+
   Widget _buildActions({bool isLandscape = false}) {
-    if (isLandscape) {
-      // Landscape: Row layout for actions
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    final isAudioPlaying =
+        _audioService.isPlaying &&
+        _audioService.currentSurahNumber ==
+            _currentVerses?['arabic']?.surahNumber;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: isLandscape ? 4 : 16,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Expanded(
               child: _buildActionButton(
-                icon: Icons.menu_book,
+                icon: Icons.menu_book_rounded,
                 label: _getContinueReadingText(),
                 onPressed: () async {
                   if (_currentVerses != null && _currentVerses!['arabic'] != null) {
@@ -854,10 +1003,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
+            // Play Button: Higher priority / Larger
+            _buildPlayButton(isAudioPlaying),
+            const SizedBox(width: 8),
             Expanded(
               child: _buildActionButton(
-                icon: Icons.refresh,
+                icon: Icons.auto_awesome_rounded,
                 label: _getNewVerseText(),
                 onPressed: () async {
                   await _notificationService.clearNotificationVerse();
@@ -867,45 +1019,36 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      );
-    }
-    
-    // Portrait: Original Column layout
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildActionButton(
-            icon: Icons.menu_book,
-            label: _getContinueReadingText(),
-            onPressed: () async {
-              if (_currentVerses != null && _currentVerses!['arabic'] != null) {
-                final arabicVerse = _currentVerses!['arabic']!;
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VerseDetailScreen(
-                      surahNumber: arabicVerse.surahNumber,
-                      numberInSurah: arabicVerse.numberInSurah,
-                      language: _currentLanguage,
-                    ),
-                  ),
-                );
-                await _loadProgress();
-              }
-            },
+      ),
+    );
+  }
+
+  Widget _buildPlayButton(bool isPlaying) {
+    return GestureDetector(
+      onTap: _playCurrentVerse,
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFD700), Color(0xFFFFB800)],
           ),
-          const SizedBox(height: 12),
-          _buildActionButton(
-            icon: Icons.refresh,
-            label: _getNewVerseText(),
-            onPressed: () async {
-              await _notificationService.clearNotificationVerse();
-              _loadRandomVerses();
-            },
-          ),
-        ],
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Icon(
+          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          color: const Color(0xFF0D1642),
+          size: 32,
+        ),
       ),
     );
   }
@@ -915,34 +1058,42 @@ class _HomeScreenState extends State<HomeScreen> {
     required String label,
     required VoidCallback onPressed,
   }) {
+    // Labels mapping to keep things short and premium
+    String displayLabel = label;
+    if (_currentLanguage == AppLanguage.arabic) {
+      if (label == 'أكمل وردك') displayLabel = 'أكمل الورد';
+      if (label == 'آية أخرى') displayLabel = 'آية أخرى';
+    } else if (_currentLanguage == AppLanguage.french) {
+      if (label == 'Continuer la lecture') displayLabel = 'Continuer la lecture';
+      if (label == 'Un autre verset') displayLabel = 'Un autre verset';
+    } else {
+      if (label == 'Continue Reading') displayLabel = 'Continue Reading';
+      if (label == 'Another Verse') displayLabel = 'Another Verse';
+    }
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFFFD700), width: 1.5),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: const Color(0xFFFFD700), size: 20),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    color: const Color(0xFFFFD700),
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+              Icon(icon, color: Colors.white70, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                displayLabel,
+                style: GoogleFonts.outfit(
+                  fontSize: 10, // Slightly smaller to ensure fit
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
                 ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

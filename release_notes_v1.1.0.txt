@@ -1,40 +1,8 @@
---- Google Play (Max 500 chars) ---
-[EN]
-V1.1.0: Full Landscape Support!
-• Landscape Mode: Enjoy reading the Mushaf and Surah lists seamlessly in horizontal orientation.
-• True Responsiveness: The app perfectly adapts to your screen size for a comfortable tablet or rotated phone experience.
-• Points Dialog Fix: Resolved scroll issues in the XP info screen.
+# Release Notes - Version 1.1.0 (Build 18)
 
-[AR]
-الإصدار 1.1.0: دعم كامل للوضع الأفقي!
-• الوضع الأفقي: استمتع بقراءة المصحف وتصفح السور بسلاسة في الوضع العرضي.
-• استجابة مثالية: يتكيف التطبيق بشكل كامل مع حجم شاشتك لتجربة مريحة على الأجهزة اللوحية.
-• إصلاحات عامة: تحسين أداء نافذة نقاط آيات.
+## ✨ Improvements
+- Greatly improved the background prayer time scheduler to ensure notifications are delivered reliably on time, even if the app is fully closed or swiped away from memory.
 
-[FR]
-V1.1.0 : Prise en charge complète du mode Paysage !
-• Mode paysage : Profitez de la lecture du Mushaf dans une orientation horizontale.
-• Réactivité parfaite : L'application s'adapte parfaitement à la taille de votre écran pour une expérience confortable.
-• Corrections : Résolution des problèmes de défilement dans l'écran des points XP.
-
---- App Store & Full Release Notes ---
-[EN]
-What's New in Version 1.1.0:
-• Full Landscape Support: You can now rotate your device! The Home Screen, Surah List, and Verse Detail screens all flawlessly adapt to horizontal orientation. 
-• Tablet Ready: The responsive split-screen UI on the Home Screen provides a beautiful experience for wider displays.
-• Infinite Scrolling Fixes: Resolved UI overflow errors across dialogs (like the Ayaat Points Info) when viewed on shorter vertical heights.
-• Stability Improvements: Under-the-hood fixes for dynamic constraints ensuring zero crashes when rotating.
-
-[AR]
-ما الجديد في الإصدار 1.1.0:
-• دعم كامل للوضع العرضي (الريسبونسيف): يمكنك الآن تدوير جهازك بحرية! شاشة البداية، قائمة السور، وتفاصيل الآيات تتكيف بشكل مثالي مع الوضع الأفقي.
-• جاهز للأجهزة اللوحية (التابلت): واجهة شاشة البداية المنقسمة توفر تجربة رائعة في الشاشات العريضة.
-• إصلاحات الواجهة: تم حل مشاكل تداخل النصوص في النوافذ المنبثقة (مثل دليل النقاط) عند عرضها بارتفاعات قصيرة.
-• استقرار محسّن: إصلاحات جوهرية لضمان عدم حدوث أي توقف للتطبيق عند تدوير الشاشة.
-
-[FR]
-Nouveautés de la version 1.1.0 :
-• Prise en charge complète du paysage : Vous pouvez maintenant faire pivoter votre appareil ! L'écran d'accueil, la liste des sourates et l'écran des versets s'adaptent parfaitement à l'horizontale.
-• Prêt pour les tablettes : L'interface utilisateur à écran partagé offre une expérience magnifique pour les écrans plus larges.
-• Corrections d'interface : Résolution des erreurs de dépassement de l'interface utilisateur dans les boîtes de dialogue lorsqu'elles sont affichées sur des hauteurs verticales plus courtes.
-• Améliorations de la stabilité.
+## 🐛 Bug Fixes
+- Fixed a bug where scheduled prayer times would disappear from the Settings screen if the app was reopened.
+- Resolved an issue in the settings interface where users could unintentionally remove automatically calculated prayer times.

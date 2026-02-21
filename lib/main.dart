@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/update_splash_screen.dart';
@@ -11,8 +12,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize notification service
-  await NotificationService().initialize();
+  try {
+    // Initialize notification service
+    await NotificationService().initialize();
+
+    // Initialize background audio service
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.ayaat.ayaat.audio.v6',
+      androidNotificationChannelName: 'Ayaat: Now Reciting',
+      androidNotificationOngoing: true,
+      androidNotificationIcon: 'mipmap/ic_launcher',
+    );
+  } catch (e) {
+    debugPrint('❌ Initialization error: $e');
+  }
 
   runApp(const AyaatApp());
 }
@@ -135,11 +148,11 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     if (_showOnboarding) {
       return const OnboardingScreen();
     }
-    
+
     if (_showUpdateSplash && _targetVerseNumber == null) {
       return const UpdateSplashScreen();
     }
-    
+
     return HomeScreen(initialVerseNumber: _targetVerseNumber);
   }
 }
