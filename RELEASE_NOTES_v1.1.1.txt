@@ -1,0 +1,29 @@
+========================================
+VERSION 1.1.1 - RELEASE NOTES
+========================================
+
+ENGLISH:
+- Fixed prayer time notifications (now schedules at prayer time + 30 minutes)
+- Added continue reading feature (remembers your position in each surah)
+- Added multiple bookmarks support
+- Added reciter memory (remembers selected reciter)
+- Added font size memory
+- Fixed notification verse display when tapping notification
+
+FRENCH:
+- Correction des notifications de priere
+- Ajout de la fonction continuer la lecture
+- Ajout des signets multiples
+- Memorisation du reciteur
+- Memorisation de la taille de police
+- Correction de l'affichage du verset
+
+ARABIC:
+- اصلاح اشعارات اوقات الصلاة
+- اضافة ميزة متابعة القراءة
+- اضافة العلامات المرجعية المتعددة
+- تذكر القارئ المفضل
+- تذكر حجم الخط
+- اصلاح عرض الآية عند الضغط على الاشعار
+
+========================================
