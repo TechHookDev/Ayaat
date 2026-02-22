@@ -107,22 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Priority 2: Check stored notification verse (legacy/fallback)
-      final notificationVerse = await _notificationService
-          .getNotificationVerse();
-      if (notificationVerse != null) {
-        // Fetch the verse in all 3 languages using the verse number
-        final verses = await _quranApi.getVerseInAllLanguages(
-          notificationVerse.number,
-        );
-        setState(() {
-          _currentVerses = verses;
-          _isLoading = false;
-        });
-        await _loadProgress();
-      } else {
-        await _loadRandomVerses();
-      }
+      // No notification verse, load random verse
+      await _loadRandomVerses();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -960,7 +946,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
   Widget _buildActions({bool isLandscape = false}) {
     final isAudioPlaying =
         _audioService.isPlaying &&
@@ -986,7 +971,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.menu_book_rounded,
                 label: _getContinueReadingText(),
                 onPressed: () async {
-                  if (_currentVerses != null && _currentVerses!['arabic'] != null) {
+                  if (_currentVerses != null &&
+                      _currentVerses!['arabic'] != null) {
                     final arabicVerse = _currentVerses!['arabic']!;
                     await Navigator.push(
                       context,
@@ -1064,7 +1050,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (label == 'أكمل وردك') displayLabel = 'أكمل الورد';
       if (label == 'آية أخرى') displayLabel = 'آية أخرى';
     } else if (_currentLanguage == AppLanguage.french) {
-      if (label == 'Continuer la lecture') displayLabel = 'Continuer la lecture';
+      if (label == 'Continuer la lecture')
+        displayLabel = 'Continuer la lecture';
       if (label == 'Un autre verset') displayLabel = 'Un autre verset';
     } else {
       if (label == 'Continue Reading') displayLabel = 'Continue Reading';

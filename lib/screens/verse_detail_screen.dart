@@ -40,7 +40,7 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   final AudioService _audioService = AudioService();
   bool _isPlaying = false;
   int? _currentlyPlayingIndex;
-  Map<String, dynamic>? _bookmark;
+  List<Map<String, dynamic>> _bookmarks = [];
   double _fontSize = 24.0;
   final PreferencesService _prefsService = PreferencesService();
   final ProgressService _progressService = ProgressService();
@@ -50,24 +50,123 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   static const int _initialRenderAmount = 15;
   static const int _batchRenderAmount = 30;
 
+  // Last read position tracking
+  int? _currentVisibleVerseIndex;
+  DateTime _lastSaveTime = DateTime.now();
+
   @override
   void initState() {
     super.initState();
     _audioService.initialize();
     _audioService.addListener(_onAudioStateChanged);
+    _setupScrollListener();
     _loadSurah();
     _loadPreferences();
+  }
+
+  void _setupScrollListener() {
+    _scrollController.addListener(() {
+      if (!_scrollController.hasClients || _verses.isEmpty) return;
+
+      final scrollOffset = _scrollController.offset;
+
+      // SIMPLE: just track which verse index is roughly at top based on scroll
+      // Average verse height ~180px with header ~100px
+      double headerOffset = (widget.surahNumber != 1 && widget.surahNumber != 9)
+          ? 100
+          : 0;
+      double adjustedOffset = (scrollOffset - headerOffset).clamp(
+        0,
+        double.infinity,
+      );
+      int estimatedIndex = (adjustedOffset / 180).floor();
+
+      if (estimatedIndex >= 0 && estimatedIndex < _verses.length) {
+        _currentVisibleVerseIndex = estimatedIndex;
+      }
+    });
+  }
+
+  void _debouncedSaveLastReadPosition(int verseIndex) {
+    // Only save every 3 seconds to avoid excessive writes
+    final now = DateTime.now();
+    if (now.difference(_lastSaveTime).inSeconds >= 3) {
+      _lastSaveTime = now;
+      _saveLastReadPosition(verseIndex);
+    }
+  }
+
+  Future<void> _saveLastReadPosition(int verseIndex) async {
+    if (verseIndex < _verses.length) {
+      final verse = _verses[verseIndex];
+      final verseNumber = verse['numberInSurah'] as int;
+      await _prefsService.saveLastReadPosition(widget.surahNumber, verseNumber);
+      debugPrint(
+        '📍 Saved reading position: Surah ${widget.surahNumber}, Ayah $verseNumber',
+      );
+    }
+  }
+
+  /// Find the currently visible verse index based on scroll position
+  int? _findCurrentVisibleVerseIndex() {
+    if (!_scrollController.hasClients || _verses.isEmpty) {
+      return null;
+    }
+
+    final scrollOffset = _scrollController.offset;
+    final viewportHeight = _scrollController.position.viewportDimension;
+
+    // Target area: top 20% of viewport (where user focus is)
+    final targetY = scrollOffset + (viewportHeight * 0.2);
+
+    // Find the verse whose TOP is closest to the target Y position
+    // This is more accurate than center-based detection
+    int? bestIndex;
+    double bestScore = double.infinity;
+
+    for (int i = 0; i < _verses.length; i++) {
+      final key = _verseKeys[i];
+      if (key?.currentContext != null) {
+        final box = key!.currentContext!.findRenderObject() as RenderBox?;
+        if (box != null) {
+          final position = box.localToGlobal(Offset.zero);
+          final verseTop = position.dy;
+          final verseBottom = verseTop + box.size.height;
+
+          // Calculate how well this verse matches the target position
+          // Prefer verses whose TOP is near the target Y
+          final distanceFromTarget = (verseTop - targetY).abs();
+
+          // Bonus: verse is actually visible on screen
+          final isVisible =
+              verseBottom > scrollOffset &&
+              verseTop < scrollOffset + viewportHeight;
+
+          // Score: distance from target (lower is better)
+          // If verse is not visible, add penalty
+          double score = distanceFromTarget;
+          if (!isVisible) score += 1000; // Heavy penalty for off-screen verses
+
+          if (score < bestScore) {
+            bestScore = score;
+            bestIndex = i;
+          }
+        }
+      }
+    }
+
+    return bestIndex;
   }
 
   void _onAudioStateChanged() {
     if (mounted) {
       final oldIndex = _currentlyPlayingIndex;
       final newIndex = _audioService.currentAyahIndex;
-      
+
       setState(() {
         _isPlaying = _audioService.isPlaying;
         _currentlyPlayingIndex = newIndex;
-        
+
         // IMPORTANT: If the playing verse is beyond our current render batch,
         // we MUST increase _renderedVerseCount immediately so the widget exists.
         if (newIndex != null && newIndex >= _renderedVerseCount) {
@@ -91,18 +190,19 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
 
   Future<void> _loadPreferences() async {
     final fontSize = await _prefsService.getFontSize();
-    final bookmark = await _prefsService.getBookmark();
+    final bookmarks = await _prefsService.getAllBookmarks();
     if (mounted) {
       setState(() {
         _fontSize = fontSize;
-        _bookmark = bookmark;
+        _bookmarks = bookmarks;
       });
     }
   }
 
-
   @override
   void dispose() {
+    // Note: Position is saved by PopScope.onPopInvokedWithResult BEFORE dispose() runs
+    // Do NOT save here to avoid overwriting the correct position
     _audioService.removeListener(_onAudioStateChanged);
     _scrollController.dispose();
     super.dispose();
@@ -132,10 +232,13 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         // Get surah names in all languages
         _surahNames = {
           AppLanguage.arabic: surahData['name'] ?? 'سورة ${widget.surahNumber}',
-          AppLanguage.english: surahData['englishName'] ?? 'Surah ${widget.surahNumber}',
-          AppLanguage.french: surahData['englishName'] ?? 'Sourate ${widget.surahNumber}',
+          AppLanguage.english:
+              surahData['englishName'] ?? 'Surah ${widget.surahNumber}',
+          AppLanguage.french:
+              surahData['englishName'] ?? 'Sourate ${widget.surahNumber}',
         };
-        _surahName = _surahNames[widget.language] ?? _surahNames[AppLanguage.arabic]!;
+        _surahName =
+            _surahNames[widget.language] ?? _surahNames[AppLanguage.arabic]!;
 
         _verses = verses
             .map<Map<String, dynamic>>(
@@ -173,6 +276,9 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         setState(() {
           // Instead of finishing loading here, we start the rendering pipeline
         });
+
+        // Set initial visible verse index (for PopScope to use later)
+        _currentVisibleVerseIndex = _targetVerseIndex ?? 0;
 
         _startProgressiveRendering();
 
@@ -297,52 +403,68 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   }
 
   Future<void> _toggleBookmark(int verseInSurah, int globalNumber) async {
-    final isCurrentlyBookmarked =
-        _bookmark?['surah'] == widget.surahNumber &&
-        _bookmark?['verse'] == verseInSurah;
+    final isCurrentlyBookmarked = await _prefsService.isBookmarked(
+      widget.surahNumber,
+      verseInSurah,
+    );
 
     if (isCurrentlyBookmarked) {
-      await _prefsService.removeBookmark();
-      if (mounted) setState(() => _bookmark = null);
-      if (mounted) {
-        final msg = widget.language == AppLanguage.arabic
-            ? 'تم إزالة العلامة المرجعية'
-            : (widget.language == AppLanguage.french
-                  ? 'Signet supprimé'
-                  : 'Bookmark removed');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg, style: GoogleFonts.outfit()),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
+      await _prefsService.removeBookmarkByPosition(
+        widget.surahNumber,
+        verseInSurah,
+      );
     } else {
-      await _prefsService.saveBookmark(widget.surahNumber, verseInSurah);
+      await _prefsService.addBookmark(widget.surahNumber, verseInSurah);
       // Gamification: Give points for intentional bookmarking
       await _progressService.addPoints(10);
-      final newBookmark = await _prefsService.getBookmark();
-      if (mounted) setState(() => _bookmark = newBookmark);
-      if (mounted) {
-        final msg = widget.language == AppLanguage.arabic
-            ? 'تم حفظ العلامة المرجعية'
-            : (widget.language == AppLanguage.french
-                  ? 'Signet ajouté'
-                  : 'Bookmark added');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg, style: GoogleFonts.outfit()),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
     }
+
+    // Refresh bookmarks list
+    final bookmarks = await _prefsService.getAllBookmarks();
+    if (mounted) setState(() => _bookmarks = bookmarks);
   }
 
   Future<void> _changeFontSize(double delta) async {
+    // Save current visible verse index before changing font
+    final currentVerseIndex =
+        _currentVisibleVerseIndex ?? _getCurrentVisibleVerseIndex();
+
     final newSize = (_fontSize + delta).clamp(16.0, 40.0);
     await _prefsService.saveFontSize(newSize);
     setState(() => _fontSize = newSize);
+
+    // After rebuild, scroll back to the same verse
+    if (currentVerseIndex != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollToTargetVerse(currentVerseIndex);
+        }
+      });
+    }
+  }
+
+  /// Get the currently visible verse index based on scroll position
+  int? _getCurrentVisibleVerseIndex() {
+    if (!_scrollController.hasClients || _verses.isEmpty) return null;
+
+    final scrollOffset = _scrollController.offset;
+    final viewportDimension = _scrollController.position.viewportDimension;
+    final centerOffset = scrollOffset + (viewportDimension * 0.3);
+
+    // Find the verse closest to this offset
+    for (int i = 0; i < _verseKeys.length; i++) {
+      final key = _verseKeys[i];
+      if (key?.currentContext != null) {
+        final box = key!.currentContext!.findRenderObject() as RenderBox?;
+        if (box != null) {
+          final position = box.localToGlobal(Offset.zero);
+          if (position.dy >= 0 && position.dy <= viewportDimension) {
+            return i;
+          }
+        }
+      }
+    }
+    return null;
   }
 
   Future<void> _playAudio(
@@ -426,51 +548,77 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A237E), Color(0xFF0D1B2A)],
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) {
+          // Use tracked visible verse index, or calculate from scroll
+          int verseIndex = _currentVisibleVerseIndex ?? 0;
+
+          // Validate the index
+          if (verseIndex >= _verses.length) {
+            verseIndex = _verses.length - 1;
+          }
+
+          final verse = _verses[verseIndex];
+          final ayahNumber = verse['numberInSurah'] as int;
+
+          // AWAIT the save to ensure it completes before navigating
+          await _prefsService.saveLastReadPosition(
+            widget.surahNumber,
+            ayahNumber,
+          );
+          debugPrint(
+            '💾 SAVED: Surah ${widget.surahNumber}, Ayah $ayahNumber (index: $verseIndex)',
+          );
+        }
+      },
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF1A237E), Color(0xFF0D1B2A)],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: OrientationBuilder(
-            builder: (context, orientation) {
-              final isLandscape = orientation == Orientation.landscape;
-              return Column(
-                children: [
-                  _buildHeader(isLandscape),
-                  if (_error != null)
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          _error!,
-                          style: GoogleFonts.amiri(
-                            fontSize: 16,
-                            color: Colors.red,
+          child: SafeArea(
+            child: OrientationBuilder(
+              builder: (context, orientation) {
+                final isLandscape = orientation == Orientation.landscape;
+                return Column(
+                  children: [
+                    _buildHeader(isLandscape),
+                    if (_error != null)
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            _error!,
+                            style: GoogleFonts.amiri(
+                              fontSize: 16,
+                              color: Colors.red,
+                            ),
                           ),
                         ),
-                      ),
-                    )
-                  else if (_isLoading)
-                    const Expanded(
-                      child: Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      ),
-                    )
-                  else
-                    Expanded(child: _buildVersesList()),
-                  // Mini Player - shows when audio is playing
-                  MiniPlayer(
-                    audioService: _audioService,
-                    language: widget.language,
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              );
-            },
+                      )
+                    else if (_isLoading)
+                      const Expanded(
+                        child: Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        ),
+                      )
+                    else
+                      Expanded(child: _buildVersesList()),
+                    // Mini Player - shows when audio is playing
+                    MiniPlayer(
+                      audioService: _audioService,
+                      language: widget.language,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -756,9 +904,9 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     final textColor = isTarget ? goldColor : Colors.white;
     final numberColor = isTarget ? goldColor : Colors.white54;
 
-    final isBookmarked =
-        _bookmark?['surah'] == widget.surahNumber &&
-        _bookmark?['verse'] == verseNumber;
+    final isBookmarked = _bookmarks.any(
+      (b) => b['surah'] == widget.surahNumber && b['verse'] == verseNumber,
+    );
     // Check if this specific verse is playing from audio service
     final bool isThisVersePlaying =
         _audioService.currentSurahNumber == widget.surahNumber &&

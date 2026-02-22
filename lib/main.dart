@@ -9,6 +9,9 @@ import 'screens/verse_detail_screen.dart';
 import 'services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Global route observer for tracking navigation
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -46,6 +49,7 @@ class AyaatApp extends StatelessWidget {
         ),
         textTheme: GoogleFonts.amiriTextTheme(Theme.of(context).textTheme),
       ),
+      navigatorObservers: [routeObserver],
       home: const AppEntryPoint(),
     );
   }

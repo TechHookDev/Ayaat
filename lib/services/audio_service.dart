@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/reciter.dart';
 import '../services/language_service.dart';
 
@@ -10,6 +11,8 @@ class AudioService extends ChangeNotifier {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
   AudioService._internal();
+
+  static const String _reciterKey = 'selected_reciter_id';
 
   final AudioPlayer _audioPlayer = AudioPlayer();
   StreamSubscription<PlayerState>? _playerStateSubscription;
@@ -46,25 +49,31 @@ class AudioService extends ChangeNotifier {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
+    // Load saved reciter preference
+    await _loadSavedReciter();
+
     // Cancel any existing subscription before creating a new one
     await _playerStateSubscription?.cancel();
 
     // Listen to player state changes
     _playerStateSubscription = _audioPlayer.playerStateStream.listen((state) {
-      debugPrint('🎵 Player State: ${state.processingState}, Playing: ${state.playing}');
+      debugPrint(
+        '🎵 Player State: ${state.processingState}, Playing: ${state.playing}',
+      );
       _isPlaying = state.playing;
       notifyListeners();
     });
 
     // Listen to index changes to update UI tracking
     _audioPlayer.currentIndexStream.listen((index) {
-      if (index != null && _audioPlayer.audioSource is ConcatenatingAudioSource) {
+      if (index != null &&
+          _audioPlayer.audioSource is ConcatenatingAudioSource) {
         final playlist = _audioPlayer.audioSource as ConcatenatingAudioSource;
         if (index < playlist.length) {
           final source = playlist.children[index];
           if (source is UriAudioSource && source.tag is MediaItem) {
             final mediaItem = source.tag as MediaItem;
-            
+
             // Skip UI updates for Bismillah
             if (mediaItem.extras?['isBismillah'] == true) {
               debugPrint('🕋 Bismillah playing...');
@@ -75,7 +84,9 @@ class AudioService extends ChangeNotifier {
             if (actualIndex != null) {
               _currentAyahIndex = actualIndex;
               _currentGlobalAyahNumber = int.tryParse(mediaItem.id);
-              debugPrint('🆕 Playlist Index Changed: $index -> Verse Index: $actualIndex');
+              debugPrint(
+                '🆕 Playlist Index Changed: $index -> Verse Index: $actualIndex',
+              );
               notifyListeners();
             }
           }
@@ -86,8 +97,33 @@ class AudioService extends ChangeNotifier {
     _isInitialized = true;
   }
 
+  /// Load the saved reciter from preferences
+  Future<void> _loadSavedReciter() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedReciterId = prefs.getString(_reciterKey);
+      if (savedReciterId != null) {
+        _currentReciter = Reciters.getById(savedReciterId);
+        debugPrint('🎵 Loaded saved reciter: ${_currentReciter.name}');
+      }
+    } catch (e) {
+      debugPrint('Error loading saved reciter: $e');
+    }
+  }
+
+  /// Save the reciter to preferences
+  Future<void> _saveReciter(String reciterId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_reciterKey, reciterId);
+    } catch (e) {
+      debugPrint('Error saving reciter: $e');
+    }
+  }
+
   void setReciter(Reciter reciter) {
     _currentReciter = reciter;
+    _saveReciter(reciter.id);
     notifyListeners();
   }
 
@@ -111,12 +147,13 @@ class AudioService extends ChangeNotifier {
 
       final language = await LanguageService().getCurrentLanguage();
       final reciterName = _currentReciter.getDisplayName(language);
-      final surahName = surahNames[language] ?? surahNames[AppLanguage.arabic] ?? '';
+      final surahName =
+          surahNames[language] ?? surahNames[AppLanguage.arabic] ?? '';
 
       if (continuousMode) {
         // Create a playlist from this ayah to the end of the surah
         final playlist = ConcatenatingAudioSource(children: []);
-        
+
         // Add Bismillah if starting in the middle, except for Surah 9 (Tawbah)
         // and Surah 1 (Fatiha - if starting at 0, we already show Bismillah in UI)
         if (ayahIndex > 0 && surahNumber != 9) {
@@ -124,25 +161,27 @@ class AudioService extends ChangeNotifier {
           playlist.add(
             AudioSource.uri(
               Uri.parse(bismillahUrl),
-            tag: MediaItem(
-              id: 'bismillah',
-              title: language == AppLanguage.arabic 
-                  ? 'آيات • سورة $surahName' 
-                  : 'Ayaat Quran • Surah $surahName',
-              artist: language == AppLanguage.arabic 
-                  ? 'البسملة • $reciterName' 
-                  : 'Bismillah • $reciterName',
-              album: 'Ayaat - آيات',
-              artUri: Uri.parse('https://raw.githubusercontent.com/TechHookDev/Ayaat/main/assets/icon_512.png'),
-              displayTitle: language == AppLanguage.arabic 
-                  ? 'آيات • سورة $surahName' 
-                  : 'Ayaat Quran • Surah $surahName',
-              displaySubtitle: language == AppLanguage.arabic 
-                  ? 'البسملة • $reciterName' 
-                  : 'Bismillah • $reciterName',
-              extras: {'isBismillah': true},
+              tag: MediaItem(
+                id: 'bismillah',
+                title: language == AppLanguage.arabic
+                    ? 'آيات • سورة $surahName'
+                    : 'Ayaat Quran • Surah $surahName',
+                artist: language == AppLanguage.arabic
+                    ? 'البسملة • $reciterName'
+                    : 'Bismillah • $reciterName',
+                album: 'Ayaat - آيات',
+                artUri: Uri.parse(
+                  'https://raw.githubusercontent.com/TechHookDev/Ayaat/main/assets/icon_512.png',
+                ),
+                displayTitle: language == AppLanguage.arabic
+                    ? 'آيات • سورة $surahName'
+                    : 'Ayaat Quran • Surah $surahName',
+                displaySubtitle: language == AppLanguage.arabic
+                    ? 'البسملة • $reciterName'
+                    : 'Bismillah • $reciterName',
+                extras: {'isBismillah': true},
+              ),
             ),
-          ),
           );
           debugPrint('🕌 Prepended Bismillah to playlist');
         }
@@ -153,30 +192,32 @@ class AudioService extends ChangeNotifier {
           final sNum = surahNumber;
           final iNum = verse['numberInSurah'] as int;
           final url = _currentReciter.getAudioUrl(sNum, iNum);
-          
+
           playlist.add(
             AudioSource.uri(
               Uri.parse(url),
               tag: MediaItem(
                 id: gNum.toString(),
-                title: language == AppLanguage.arabic 
-                    ? 'آيات • سورة $surahName' 
+                title: language == AppLanguage.arabic
+                    ? 'آيات • سورة $surahName'
                     : 'Ayaat Quran • Surah $surahName',
-                artist: language == AppLanguage.arabic 
+                artist: language == AppLanguage.arabic
                     ? 'آية $iNum • $reciterName'
                     : language == AppLanguage.french
-                        ? 'Verset $iNum • $reciterName'
-                        : 'Ayah $iNum • $reciterName',
+                    ? 'Verset $iNum • $reciterName'
+                    : 'Ayah $iNum • $reciterName',
                 album: 'Ayaat - آيات',
-                artUri: Uri.parse('https://raw.githubusercontent.com/TechHookDev/Ayaat/main/assets/icon_512.png'),
-                displayTitle: language == AppLanguage.arabic 
-                    ? 'آيات • سورة $surahName' 
+                artUri: Uri.parse(
+                  'https://raw.githubusercontent.com/TechHookDev/Ayaat/main/assets/icon_512.png',
+                ),
+                displayTitle: language == AppLanguage.arabic
+                    ? 'آيات • سورة $surahName'
                     : 'Ayaat • Surah $surahName',
-                displaySubtitle: language == AppLanguage.arabic 
+                displaySubtitle: language == AppLanguage.arabic
                     ? 'آية $iNum • $reciterName'
                     : language == AppLanguage.french
-                        ? 'Verset $iNum • $reciterName'
-                        : 'Ayah $iNum • $reciterName',
+                    ? 'Verset $iNum • $reciterName'
+                    : 'Ayah $iNum • $reciterName',
                 extras: {'index': i},
               ),
             ),
@@ -189,30 +230,32 @@ class AudioService extends ChangeNotifier {
         // Single ayah mode
         final numberInSurah = verses[ayahIndex]['numberInSurah'] as int;
         final url = _currentReciter.getAudioUrl(surahNumber, numberInSurah);
-        
+
         await _audioPlayer.setAudioSource(
           AudioSource.uri(
             Uri.parse(url),
             tag: MediaItem(
               id: globalAyahNumber.toString(),
-              title: language == AppLanguage.arabic 
-                  ? 'آيات • سورة $surahName' 
+              title: language == AppLanguage.arabic
+                  ? 'آيات • سورة $surahName'
                   : 'Ayaat Quran • Surah $surahName',
-              artist: language == AppLanguage.arabic 
+              artist: language == AppLanguage.arabic
                   ? 'آية $numberInSurah • $reciterName'
                   : language == AppLanguage.french
-                      ? 'Verset $numberInSurah • $reciterName'
-                      : 'Ayah $numberInSurah • $reciterName',
+                  ? 'Verset $numberInSurah • $reciterName'
+                  : 'Ayah $numberInSurah • $reciterName',
               album: 'Ayaat - آيات',
-              artUri: Uri.parse('https://raw.githubusercontent.com/TechHookDev/Ayaat/main/assets/icon_512.png'),
-              displayTitle: language == AppLanguage.arabic 
-                  ? 'آيات • سورة $surahName' 
+              artUri: Uri.parse(
+                'https://raw.githubusercontent.com/TechHookDev/Ayaat/main/assets/icon_512.png',
+              ),
+              displayTitle: language == AppLanguage.arabic
+                  ? 'آيات • سورة $surahName'
                   : 'Ayaat • Surah $surahName',
-              displaySubtitle: language == AppLanguage.arabic 
+              displaySubtitle: language == AppLanguage.arabic
                   ? 'آية $numberInSurah • $reciterName'
                   : language == AppLanguage.french
-                      ? 'Verset $numberInSurah • $reciterName'
-                      : 'Ayah $numberInSurah • $reciterName',
+                  ? 'Verset $numberInSurah • $reciterName'
+                  : 'Ayah $numberInSurah • $reciterName',
               extras: {'index': ayahIndex},
             ),
           ),
@@ -225,8 +268,6 @@ class AudioService extends ChangeNotifier {
       debugPrint('❌ Error playing audio: $e');
     }
   }
-
-
 
   Future<void> playSurah({
     required int surahNumber,

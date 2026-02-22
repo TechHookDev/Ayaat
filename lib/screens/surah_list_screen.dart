@@ -16,14 +16,15 @@ class _SurahListScreenState extends State<SurahListScreen> {
   final QuranApiService _apiService = QuranApiService();
   final LanguageService _languageService = LanguageService();
   final PreferencesService _prefs = PreferencesService();
-  
+
   List<dynamic> _surahs = [];
   List<dynamic> _filteredSurahs = [];
   bool _isLoading = true;
   String? _error;
   AppLanguage _currentLanguage = AppLanguage.arabic;
   String _searchQuery = '';
-  Map<String, int>? _bookmark;
+  List<Map<String, dynamic>> _bookmarks = [];
+  Map<String, dynamic>? _lastReadPosition;
 
   @override
   void initState() {
@@ -34,16 +35,18 @@ class _SurahListScreenState extends State<SurahListScreen> {
   Future<void> _loadData() async {
     try {
       final lang = await _languageService.getCurrentLanguage();
-      final bookmark = await _prefs.getBookmark();
-      
+      final bookmarks = await _prefs.getAllBookmarks();
+      final lastRead = await _prefs.getLastReadPosition();
+
       setState(() => _currentLanguage = lang);
-      
+
       final surahs = await _apiService.getSurahs(lang);
       if (mounted) {
         setState(() {
           _surahs = surahs;
           _filteredSurahs = surahs;
-          _bookmark = bookmark;
+          _bookmarks = bookmarks;
+          _lastReadPosition = lastRead;
           _isLoading = false;
         });
       }
@@ -80,11 +83,13 @@ class _SurahListScreenState extends State<SurahListScreen> {
         _filteredSurahs = _surahs.where((surah) {
           final englishName = surah['englishName'].toString().toLowerCase();
           final arabicName = _stripDiacritics(surah['name'].toString());
-          final translationName = surah['englishNameTranslation'].toString().toLowerCase();
-          
-          return englishName.contains(searchLower) || 
-                 arabicName.contains(searchLower) || 
-                 translationName.contains(searchLower);
+          final translationName = surah['englishNameTranslation']
+              .toString()
+              .toLowerCase();
+
+          return englishName.contains(searchLower) ||
+              arabicName.contains(searchLower) ||
+              translationName.contains(searchLower);
         }).toList();
       }
     });
@@ -102,11 +107,15 @@ class _SurahListScreenState extends State<SurahListScreen> {
         ),
       ),
     );
-    // Refresh bookmark when returning
-    final bookmark = await _prefs.getBookmark();
+    // Wait a tiny bit for SharedPreferences to flush
+    await Future.delayed(const Duration(milliseconds: 50));
+    // Refresh bookmarks and last read position when returning
+    final bookmarks = await _prefs.getAllBookmarks();
+    final lastRead = await _prefs.getLastReadPosition();
     if (mounted) {
       setState(() {
-        _bookmark = bookmark;
+        _bookmarks = bookmarks;
+        _lastReadPosition = lastRead;
       });
     }
   }
@@ -130,13 +139,25 @@ class _SurahListScreenState extends State<SurahListScreen> {
                 children: [
                   _buildHeader(isLandscape),
                   _buildSearchBar(isLandscape),
-                  if (_bookmark != null && _searchQuery.isEmpty) _buildContinueReadingBanner(isLandscape),
+                  if (_bookmarks.isNotEmpty && _searchQuery.isEmpty)
+                    _buildBookmarksSection(isLandscape),
+                  if (_lastReadPosition != null && _searchQuery.isEmpty)
+                    _buildContinueReadingBanner(isLandscape),
                   Expanded(
                     child: _isLoading
-                        ? const Center(child: CircularProgressIndicator(color: Color(0xFFFFD700)))
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFFFD700),
+                            ),
+                          )
                         : _error != null
-                            ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-                            : _buildSurahList(),
+                        ? Center(
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          )
+                        : _buildSurahList(),
                   ),
                 ],
               );
@@ -173,12 +194,19 @@ class _SurahListScreenState extends State<SurahListScreen> {
 
   Widget _buildHeader(bool isLandscape) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 5 : 20),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: isLandscape ? 5 : 20,
+      ),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.arrow_back_ios, color: Colors.white70, size: isLandscape ? 20 : 24),
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: Colors.white70,
+              size: isLandscape ? 20 : 24,
+            ),
           ),
           Expanded(
             child: Text(
@@ -199,7 +227,10 @@ class _SurahListScreenState extends State<SurahListScreen> {
 
   Widget _buildSearchBar(bool isLandscape) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 0 : 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: isLandscape ? 0 : 10,
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
@@ -211,50 +242,193 @@ class _SurahListScreenState extends State<SurahListScreen> {
           style: GoogleFonts.outfit(color: Colors.white),
           decoration: InputDecoration(
             hintText: _getSearchHint(),
-            hintStyle: GoogleFonts.outfit(color: Colors.white54, fontSize: isLandscape ? 14 : 16),
-            prefixIcon: Icon(Icons.search, color: Colors.white54, size: isLandscape ? 20 : 24),
+            hintStyle: GoogleFonts.outfit(
+              color: Colors.white54,
+              fontSize: isLandscape ? 14 : 16,
+            ),
+            prefixIcon: Icon(
+              Icons.search,
+              color: Colors.white54,
+              size: isLandscape ? 20 : 24,
+            ),
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 10 : 15),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: isLandscape ? 10 : 15,
+            ),
             isDense: isLandscape, // Reduces internal padding inherently
           ),
-          textDirection: _currentLanguage == AppLanguage.arabic ? TextDirection.rtl : TextDirection.ltr,
+          textDirection: _currentLanguage == AppLanguage.arabic
+              ? TextDirection.rtl
+              : TextDirection.ltr,
         ),
       ),
     );
   }
 
-  Widget _buildContinueReadingBanner(bool isLandscape) {
-    if (_bookmark == null) return const SizedBox.shrink();
-    
-    final surahNum = _bookmark!['surah']!;
-    final verseNum = _bookmark!['verse']!;
+  /// Build the bookmarks section with multiple bookmarks
+  Widget _buildBookmarksSection(bool isLandscape) {
     final isArabic = _currentLanguage == AppLanguage.arabic;
-    
-    // Find surah name if we have loaded surahs
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section title
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, isLandscape ? 5 : 10, 20, 8),
+          child: Text(
+            isArabic
+                ? 'العلامات المرجعية (${_bookmarks.length})'
+                : (_currentLanguage == AppLanguage.french
+                      ? 'Signets (${_bookmarks.length})'
+                      : 'Bookmarks (${_bookmarks.length})'),
+            style: GoogleFonts.outfit(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        // Scrollable list of bookmarks
+        SizedBox(
+          height: isLandscape ? 55 : 70,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _bookmarks.length,
+            itemBuilder: (context, index) {
+              return _buildBookmarkCard(_bookmarks[index], isLandscape);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build a single bookmark card
+  Widget _buildBookmarkCard(Map<String, dynamic> bookmark, bool isLandscape) {
+    final surahNum = bookmark['surah'] as int;
+    final verseNum = bookmark['verse'] as int;
+    final isArabic = _currentLanguage == AppLanguage.arabic;
+
+    // Find surah name
     String surahName = 'Surah $surahNum';
     if (_surahs.isNotEmpty) {
-      final surah = _surahs.firstWhere((s) => s['number'] == surahNum, orElse: () => null);
+      final surah = _surahs.firstWhere(
+        (s) => s['number'] == surahNum,
+        orElse: () => null,
+      );
       if (surah != null) {
         surahName = isArabic ? surah['name'] : surah['englishName'];
       }
     }
 
-    String text;
-    if (_currentLanguage == AppLanguage.french) {
-      text = 'Continuer de lire: $surahName, verset $verseNum';
-    } else if (_currentLanguage == AppLanguage.english) {
-      text = 'Continue reading: $surahName, Verse $verseNum';
-    } else {
-      text = 'استمر في القراءة: $surahName، آية $verseNum';
-    }
-
+    // Calculate display verse number (adjust for Al-Fatiha)
     int displayVerseNum = verseNum;
     if (surahNum == 1 && verseNum > 1) {
       displayVerseNum = verseNum - 1;
     }
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: isLandscape ? 5 : 10),
+      padding: const EdgeInsets.only(right: 10),
+      child: InkWell(
+        onTap: () => _navigateToSurah(surahNum, numberInSurah: verseNum),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: isLandscape ? 200 : 220,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFFFFD700).withOpacity(0.15),
+                const Color(0xFFFFD700).withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFD700).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.bookmark,
+                  color: Color(0xFFFFD700),
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      surahName,
+                      style: GoogleFonts.amiri(
+                        color: Colors.white,
+                        fontSize: isLandscape ? 14 : 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      isArabic
+                          ? 'آية $displayVerseNum'
+                          : (_currentLanguage == AppLanguage.french
+                                ? 'Verset $displayVerseNum'
+                                : 'Ayah $displayVerseNum'),
+                      style: GoogleFonts.outfit(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build the continue reading banner using auto-saved position
+  Widget _buildContinueReadingBanner(bool isLandscape) {
+    final surahNum = _lastReadPosition!['surah'] as int;
+    final verseNum = _lastReadPosition!['verse'] as int;
+    final isArabic = _currentLanguage == AppLanguage.arabic;
+
+    // Find surah name
+    String surahName = 'Surah $surahNum';
+    if (_surahs.isNotEmpty) {
+      final surah = _surahs.firstWhere(
+        (s) => s['number'] == surahNum,
+        orElse: () => null,
+      );
+      if (surah != null) {
+        surahName = isArabic ? surah['name'] : surah['englishName'];
+      }
+    }
+
+    // Calculate display verse number (adjust for Al-Fatiha)
+    int displayVerseNum = verseNum;
+    if (surahNum == 1 && verseNum > 1) {
+      displayVerseNum = verseNum - 1;
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        _bookmarks.isNotEmpty ? 5 : (isLandscape ? 5 : 10),
+        20,
+        isLandscape ? 5 : 10,
+      ),
       child: InkWell(
         onTap: () => _navigateToSurah(surahNum, numberInSurah: verseNum),
         borderRadius: BorderRadius.circular(16),
@@ -263,30 +437,38 @@ class _SurahListScreenState extends State<SurahListScreen> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                const Color(0xFFFFD700).withOpacity(0.15),
-                const Color(0xFFFFD700).withOpacity(0.05),
+                const Color(0xFF4CAF50).withOpacity(0.15),
+                const Color(0xFF4CAF50).withOpacity(0.05),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
+            border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.3)),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFD700).withOpacity(0.2),
+                  color: const Color(0xFF4CAF50).withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.bookmark, color: Color(0xFFFFD700), size: 20),
+                child: const Icon(
+                  Icons.play_circle_outline,
+                  color: Color(0xFF4CAF50),
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 16),
-               Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _currentLanguage == AppLanguage.arabic ? 'متابعة القراءة' : 'Continue Reading',
+                      isArabic
+                          ? 'مواصلة القراءة'
+                          : (_currentLanguage == AppLanguage.french
+                                ? 'Continuer la lecture'
+                                : 'Continue Reading'),
                       style: GoogleFonts.outfit(
                         color: Colors.white70,
                         fontSize: 12,
@@ -295,11 +477,11 @@ class _SurahListScreenState extends State<SurahListScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _currentLanguage == AppLanguage.arabic 
-                          ? '$surahName • آية $displayVerseNum' 
-                          : (_currentLanguage == AppLanguage.french 
-                              ? '$surahName • Verset $displayVerseNum' 
-                              : '$surahName • Ayah $displayVerseNum'),
+                      isArabic
+                          ? '$surahName • آية $displayVerseNum'
+                          : (_currentLanguage == AppLanguage.french
+                                ? '$surahName • Verset $displayVerseNum'
+                                : '$surahName • Ayah $displayVerseNum'),
                       style: GoogleFonts.amiri(
                         color: Colors.white,
                         fontSize: 16,
@@ -309,7 +491,11 @@ class _SurahListScreenState extends State<SurahListScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, color: Color(0xFFFFD700), size: 16),
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: Color(0xFF4CAF50),
+                size: 16,
+              ),
             ],
           ),
         ),
@@ -321,7 +507,9 @@ class _SurahListScreenState extends State<SurahListScreen> {
     if (_filteredSurahs.isEmpty) {
       return Center(
         child: Text(
-          _currentLanguage == AppLanguage.arabic ? 'لا توجد نتائج' : 'No results found',
+          _currentLanguage == AppLanguage.arabic
+              ? 'لا توجد نتائج'
+              : 'No results found',
           style: GoogleFonts.outfit(color: Colors.white70),
         ),
       );
@@ -342,7 +530,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
     final int surahNumber = surah['number'];
     final bool isArabic = _currentLanguage == AppLanguage.arabic;
     final bool isFrench = _currentLanguage == AppLanguage.french;
-    
+
     final String surahName = isArabic ? surah['name'] : surah['englishName'];
     final int ayahsCount = surah['numberOfAyahs'];
 
@@ -380,7 +568,9 @@ class _SurahListScreenState extends State<SurahListScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFFFFD700).withOpacity(0.1),
-                  border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
+                  border: Border.all(
+                    color: const Color(0xFFFFD700).withOpacity(0.3),
+                  ),
                 ),
                 child: Text(
                   '$surahNumber',
@@ -392,13 +582,15 @@ class _SurahListScreenState extends State<SurahListScreen> {
                 ),
               ),
               const Spacer(),
-              
+
               // Surah Content
               Column(
-                crossAxisAlignment: isArabic ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment: isArabic
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   Text(
+                  Text(
                     surahName,
                     style: GoogleFonts.amiri(
                       color: Colors.white,
