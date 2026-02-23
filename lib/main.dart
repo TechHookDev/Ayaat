@@ -99,7 +99,11 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   Future<void> _checkAppState() async {
     // Check if app was launched from notification
     final launchVerseNumber = await _notificationService.getLaunchVerseNumber();
-    if (launchVerseNumber != null) {
+    if (kDebugMode) {
+      print('App launch verse number: $launchVerseNumber');
+    }
+    
+    if (launchVerseNumber != null && launchVerseNumber > 0) {
       if (mounted) {
         setState(() {
           _targetVerseNumber = launchVerseNumber;

@@ -4,4 +4,5 @@ Release Notes:
 - Bug fixes in 3 languages (Arabic, English, French).
 - Improved right-to-left alignment for Arabic search bar.
 - Cleaned up UI search hints for better readability across all languages.
-- Fixed notification navigation issues and improved stability.
+- Fixed notification navigation issues and added a toggle for Prayer Reminders.
+- Improved notification stability and reduced duplicate alerts.

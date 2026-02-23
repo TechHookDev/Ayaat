@@ -67,6 +67,7 @@ class NotificationService {
   static const String _notificationVerseKey = 'notification_verse';
   static const String _notificationModeKey =
       'notification_mode'; // 'manual' or 'prayer'
+  static const String _prayerRemindersEnabledKey = 'prayer_reminders_enabled';
   static const int _baseNotificationId = 1000;
   static const int _prayerReminderIdOffset = 3000;
   static const int _daysToSchedule = 7;
@@ -466,6 +467,18 @@ class NotificationService {
     return null;
   }
 
+  /// Check if prayer reminders are enabled
+  Future<bool> isPrayerRemindersEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_prayerRemindersEnabledKey) ?? true; // Default to true
+  }
+
+  /// Set prayer reminders status
+  Future<void> setPrayerRemindersEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prayerRemindersEnabledKey, enabled);
+  }
+
   /// Check and reschedule notifications if needed (e.g. on app start)
   Future<void> rescheduleNotifications({bool useDelay = false}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -586,6 +599,7 @@ class NotificationService {
     bool hasCancelledOld = false;
 
     try {
+      final bool prayerRemindersEnabled = await isPrayerRemindersEnabled();
       Coordinates? myCoordinates;
       CalculationParameters? params;
       if (isPrayerMode) {
@@ -667,18 +681,20 @@ class NotificationService {
             DateTime prayerExact = prayerTarget.toLocal();
             DateTime verseTarget = prayerExact.add(const Duration(minutes: 30));
 
-            // 1. Schedule Prayer Reminder (Immediate)
-            final prayerReminderId = _prayerReminderIdOffset + (day * 10) + timeIndex;
-            final prayerName = _getPrayerName(timeIndex, currentLanguage);
-            
-            await _scheduleSingleNotification(
-              id: prayerReminderId,
-              title: currentLanguage == AppLanguage.arabic ? 'حان وقت صلاة $prayerName' : 'Prayer Time: $prayerName',
-              body: currentLanguage == AppLanguage.arabic ? 'تذكر قراءة وردك اليومي من القرآن' : 'Remember to read your daily Quran portion',
-              hour: prayerExact.hour,
-              minute: prayerExact.minute,
-              daysAhead: day,
-            );
+            // 1. Schedule Prayer Reminder (Immediate) - IF ENABLED
+            if (prayerRemindersEnabled) {
+              final prayerReminderId = _prayerReminderIdOffset + (day * 10) + timeIndex;
+              final prayerName = _getPrayerName(timeIndex, currentLanguage);
+              
+              await _scheduleSingleNotification(
+                id: prayerReminderId,
+                title: currentLanguage == AppLanguage.arabic ? 'حان وقت صلاة $prayerName' : 'Prayer Time: $prayerName',
+                body: currentLanguage == AppLanguage.arabic ? 'تذكر قراءة وردك اليومي من القرآن' : 'Remember to read your daily Quran portion',
+                hour: prayerExact.hour,
+                minute: prayerExact.minute,
+                daysAhead: day,
+              );
+            }
 
             // 2. Schedule Verse Notification (30 mins after)
             hour = verseTarget.hour;

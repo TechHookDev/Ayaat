@@ -22,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<TimeOfDay> _prayerTimes = [];
   AppLanguage _currentLanguage = AppLanguage.arabic;
   String _notificationMode = 'manual';
+  bool _prayerRemindersEnabled = true;
   bool _isLoading = true;
   bool _isAboutExpanded = false;
   String _appVersion = '1.0.9'; // Fallback
@@ -36,14 +37,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final enabled = await _notificationService.isEnabled();
     final times = await _notificationService.getScheduledTimes();
     final mode = await _notificationService.getNotificationMode();
+    final prayerReminders = await _notificationService.isPrayerRemindersEnabled();
     final language = await _languageService.getCurrentLanguage();
 
-    debugPrint('Settings: _loadSettings - Enabled: $enabled, Mode: $mode, Times: $times');
+    debugPrint('Settings: _loadSettings - Enabled: $enabled, Mode: $mode, PrayerReminders: $prayerReminders, Times: $times');
 
     setState(() {
       _notificationsEnabled = enabled;
       _currentLanguage = language;
       _notificationMode = mode;
+      _prayerRemindersEnabled = prayerReminders;
       _notificationTimes.clear();
       _prayerTimes.clear();
       
@@ -148,6 +151,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return 'Prayer Times';
       case AppLanguage.french:
         return 'Horaires de Prières';
+    }
+  }
+
+  String _getPrayerRemindersTitle() {
+    switch (_currentLanguage) {
+      case AppLanguage.arabic:
+        return 'تنبيهات أوقات الصلاة';
+      case AppLanguage.english:
+        return 'Prayer Time Reminders';
+      case AppLanguage.french:
+        return 'Rappels des heures de prière';
     }
   }
 
@@ -345,6 +359,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       } else {
         await _notificationService.scheduleMultipleDaily(_notificationTimes);
       }
+    }
+  }
+
+  Future<void> _togglePrayerReminders(bool value) async {
+    setState(() {
+      _prayerRemindersEnabled = value;
+    });
+    await _notificationService.setPrayerRemindersEnabled(value);
+    
+    if (_notificationsEnabled && _notificationMode == 'prayer') {
+      await _notificationService.schedulePrayerTimes();
     }
   }
 
@@ -650,8 +675,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ] else ...[
-                   // Prayer Times Info
-                   Padding(
+                  const Divider(color: Colors.white24, height: 1),
+                  // Prayer reminders toggle
+                  InkWell(
+                    onTap: () => _togglePrayerReminders(!_prayerRemindersEnabled),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          if (_currentLanguage == AppLanguage.arabic) ...[
+                            Switch(
+                              value: _prayerRemindersEnabled,
+                              onChanged: _togglePrayerReminders,
+                              activeTrackColor: const Color(0xFFFFD700),
+                              activeColor: const Color(0xFF0D1B2A),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _getPrayerRemindersTitle(),
+                                style: GoogleFonts.amiri(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ] else ...[
+                            Expanded(
+                              child: Text(
+                                _getPrayerRemindersTitle(),
+                                style: GoogleFonts.amiri(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.left,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Switch(
+                              value: _prayerRemindersEnabled,
+                              onChanged: _togglePrayerReminders,
+                              activeTrackColor: const Color(0xFFFFD700),
+                              activeColor: const Color(0xFF0D1B2A),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Divider(color: Colors.white24, height: 1),
+                  // Prayer Times Info
+                  Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
