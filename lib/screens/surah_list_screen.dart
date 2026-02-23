@@ -183,12 +183,12 @@ class _SurahListScreenState extends State<SurahListScreen> {
   String _getSearchHint() {
     switch (_currentLanguage) {
       case AppLanguage.french:
-        return 'Rechercher une sourate...';
+        return 'Rechercher une sourate';
       case AppLanguage.english:
-        return 'Search Surah...';
+        return 'Search Surah';
       case AppLanguage.arabic:
       default:
-        return 'ابحث عن سورة...';
+        return 'ابحث عن سورة';
     }
   }
 
@@ -240,27 +240,28 @@ class _SurahListScreenState extends State<SurahListScreen> {
         child: TextField(
           onChanged: _filterSurahs,
           style: GoogleFonts.outfit(color: Colors.white),
+          textAlign: _currentLanguage == AppLanguage.arabic ? TextAlign.right : TextAlign.left,
+          textDirection: _currentLanguage == AppLanguage.arabic ? TextDirection.rtl : TextDirection.ltr,
           decoration: InputDecoration(
             hintText: _getSearchHint(),
             hintStyle: GoogleFonts.outfit(
               color: Colors.white54,
               fontSize: isLandscape ? 14 : 16,
             ),
-            prefixIcon: Icon(
-              Icons.search,
-              color: Colors.white54,
-              size: isLandscape ? 20 : 24,
-            ),
+            // Surgical fix: Move icon to right (suffix) for Arabic, left (prefix) for others
+            prefixIcon: _currentLanguage == AppLanguage.arabic 
+              ? null 
+              : Icon(Icons.search, color: Colors.white54, size: isLandscape ? 20 : 24),
+            suffixIcon: _currentLanguage == AppLanguage.arabic 
+              ? Icon(Icons.search, color: Colors.white54, size: isLandscape ? 20 : 24)
+              : null,
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 20,
               vertical: isLandscape ? 10 : 15,
             ),
-            isDense: isLandscape, // Reduces internal padding inherently
+            isDense: isLandscape,
           ),
-          textDirection: _currentLanguage == AppLanguage.arabic
-              ? TextDirection.rtl
-              : TextDirection.ltr,
         ),
       ),
     );
@@ -379,7 +380,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
                     ),
                     Text(
                       isArabic
-                          ? 'آية $displayVerseNum'
+                          ? '$displayVerseNum آية'
                           : (_currentLanguage == AppLanguage.french
                                 ? 'Verset $displayVerseNum'
                                 : 'Ayah $displayVerseNum'),
@@ -478,7 +479,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
                     const SizedBox(height: 4),
                     Text(
                       isArabic
-                          ? '$surahName • آية $displayVerseNum'
+                          ? '$surahName • $displayVerseNum آية'
                           : (_currentLanguage == AppLanguage.french
                                 ? '$surahName • Verset $displayVerseNum'
                                 : '$surahName • Ayah $displayVerseNum'),

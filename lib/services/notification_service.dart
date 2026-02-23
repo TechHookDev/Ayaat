@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -52,6 +53,7 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
   final QuranApiService _quranApi = QuranApiService();
+  final Random _random = Random();
 
   // Stream to notify when notification is tapped
   static final _notificationTappedController =
@@ -66,7 +68,52 @@ class NotificationService {
   static const String _notificationModeKey =
       'notification_mode'; // 'manual' or 'prayer'
   static const int _baseNotificationId = 1000;
+  static const int _prayerReminderIdOffset = 3000;
   static const int _daysToSchedule = 7;
+
+  /// Fallback verses in case API fails or offline
+  static final List<Verse> _fallbackVerses = [
+    Verse(
+      number: 255,
+      text: "ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ ۚ لَا تَأْخُذُهُۥ سِنَةٌۭ وَلَا نَوْمٌۭ...",
+      numberInSurah: 255,
+      surahName: "سُورَةُ ٱلْبَقَرَةِ",
+      surahEnglishName: "Al-Baqara",
+      surahNumber: 2,
+    ),
+    Verse(
+      number: 285,
+      text: "ءَامَنَ ٱلرَّسُولُ بِمَآ أُنزِلَ إِلَيْهِ مِن رَّبِّهِۦ وَٱلْمُؤْمِنُونَ...",
+      numberInSurah: 285,
+      surahName: "سُورَةُ ٱلْبَقَرَةِ",
+      surahEnglishName: "Al-Baqara",
+      surahNumber: 2,
+    ),
+    Verse(
+      number: 1,
+      text: "قُلْ هُوَ ٱللَّهُ أَحَدٌ",
+      numberInSurah: 1,
+      surahName: "سُورَةُ ٱلْإِخْلَاصِ",
+      surahEnglishName: "Al-Ikhlaas",
+      surahNumber: 112,
+    ),
+    Verse(
+      number: 1,
+      text: "قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ",
+      numberInSurah: 1,
+      surahName: "سُورَةُ ٱلْفَلَقِ",
+      surahEnglishName: "Al-Falaq",
+      surahNumber: 113,
+    ),
+    Verse(
+      number: 1,
+      text: "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ",
+      numberInSurah: 1,
+      surahName: "سُورَةُ ٱلنَّاسِ",
+      surahEnglishName: "An-Naas",
+      surahNumber: 114,
+    ),
+  ];
 
   /// Initialize the notification service (without requesting permissions)
   Future<void> initialize() async {
@@ -213,33 +260,22 @@ class NotificationService {
 
       final prayerTimes = PrayerTimes.today(myCoordinates, params);
 
-      // Add 30 minutes offset to match onboarding logic
-      final fajr = prayerTimes.fajr.toLocal().add(const Duration(minutes: 30));
-      final dhuhr = prayerTimes.dhuhr.toLocal().add(
-        const Duration(minutes: 30),
-      );
-      final asr = prayerTimes.asr.toLocal().add(const Duration(minutes: 30));
-      final maghrib = prayerTimes.maghrib.toLocal().add(
-        const Duration(minutes: 30),
-      );
-      final isha = prayerTimes.isha.toLocal().add(const Duration(minutes: 30));
-
       final times = <TimeOfDay>[
-        TimeOfDay.fromDateTime(fajr),
-        TimeOfDay.fromDateTime(dhuhr),
-        TimeOfDay.fromDateTime(asr),
-        TimeOfDay.fromDateTime(maghrib),
-        TimeOfDay.fromDateTime(isha),
+        TimeOfDay.fromDateTime(prayerTimes.fajr.toLocal()),
+        TimeOfDay.fromDateTime(prayerTimes.dhuhr.toLocal()),
+        TimeOfDay.fromDateTime(prayerTimes.asr.toLocal()),
+        TimeOfDay.fromDateTime(prayerTimes.maghrib.toLocal()),
+        TimeOfDay.fromDateTime(prayerTimes.isha.toLocal()),
       ];
 
       debugPrint(
-        '>> [DEBUG] Calculated Prayer Times (Today, with +30min offset):',
+        '>> [DEBUG] Calculated Prayer Times (Today):',
       );
-      debugPrint('   - Fajr: $fajr');
-      debugPrint('   - Dhuhr: $dhuhr');
-      debugPrint('   - Asr: $asr');
-      debugPrint('   - Maghrib: $maghrib');
-      debugPrint('   - Isha: $isha');
+      debugPrint('   - Fajr: ${times[0]}');
+      debugPrint('   - Dhuhr: ${times[1]}');
+      debugPrint('   - Asr: ${times[2]}');
+      debugPrint('   - Maghrib: ${times[3]}');
+      debugPrint('   - Isha: ${times[4]}');
 
       // Save mode
       await prefs.setString(_notificationModeKey, 'prayer');
@@ -573,18 +609,7 @@ class NotificationService {
           batchFutures.add(
             _quranApi.getRandomVerse(language: currentLanguage).catchError((e) {
               debugPrint('API Error fetching verse, using fallback: $e');
-              return Verse(
-                number: 1,
-                text: currentLanguage == AppLanguage.arabic
-                    ? 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ'
-                    : currentLanguage == AppLanguage.french
-                    ? 'Au nom d\'Allah, le Tout Miséricordieux, le Très Miséricordieux.'
-                    : 'In the name of Allah, the Entirely Merciful, the Especially Merciful.',
-                numberInSurah: 1,
-                surahName: 'سُورَةُ ٱلْفَاتِحَةِ',
-                surahEnglishName: 'Al-Faatiha',
-                surahNumber: 1,
-              );
+              return _fallbackVerses[_random.nextInt(_fallbackVerses.length)];
             }),
           );
         }
@@ -639,11 +664,25 @@ class NotificationService {
                 prayerTarget = dailyPrayerTimes.fajr;
                 break;
             }
-            prayerTarget = prayerTarget.toLocal().add(
-              const Duration(minutes: 30),
+            DateTime prayerExact = prayerTarget.toLocal();
+            DateTime verseTarget = prayerExact.add(const Duration(minutes: 30));
+
+            // 1. Schedule Prayer Reminder (Immediate)
+            final prayerReminderId = _prayerReminderIdOffset + (day * 10) + timeIndex;
+            final prayerName = _getPrayerName(timeIndex, currentLanguage);
+            
+            await _scheduleSingleNotification(
+              id: prayerReminderId,
+              title: currentLanguage == AppLanguage.arabic ? 'حان وقت صلاة $prayerName' : 'Prayer Time: $prayerName',
+              body: currentLanguage == AppLanguage.arabic ? 'تذكر قراءة وردك اليومي من القرآن' : 'Remember to read your daily Quran portion',
+              hour: prayerExact.hour,
+              minute: prayerExact.minute,
+              daysAhead: day,
             );
-            hour = prayerTarget.hour;
-            minute = prayerTarget.minute;
+
+            // 2. Schedule Verse Notification (30 mins after)
+            hour = verseTarget.hour;
+            minute = verseTarget.minute;
           }
 
           final notificationId = _baseNotificationId + (day * 100) + timeIndex;
@@ -664,7 +703,10 @@ class NotificationService {
         );
 
         // Delay between batches to respect rate limits while maintaining OS speed
-        await Future.delayed(const Duration(milliseconds: 1500));
+        // BUT skip delay for the first batch so "immediate" notifications are scheduled ASAP
+        if (i + batchSize < totalVersesNeeded) {
+          await Future.delayed(const Duration(milliseconds: 1500));
+        }
       }
 
       debugPrint(
@@ -677,40 +719,46 @@ class NotificationService {
     }
   }
 
-  /// Schedule a single notification for a specific day in the future
+  /// Schedule a single notification (either a verse or a simple reminder)
   Future<void> _scheduleSingleNotification({
     required int id,
-    required Verse verse,
-    required int hour,
-    required int minute,
+    int? hour,
+    int? minute,
     required int daysAhead,
+    Verse? verse,
+    String? title,
+    String? body,
   }) async {
-    // Declare variables outside try block so they're accessible in catch
     var actualId = id;
     try {
-      // Calculate date: Today + daysAhead
-      // FIX: Use _nextInstanceOfTime ONLY for finding the base time for "today" logic
-      // if we want to be strict.
-      // ACTUALLY: The simplest way is to construct the date for Today,
-      // check if it's passed (if so, it doesn't matter for daysAhead > 0,
-      // but for daysAhead == 0 we might want to skip or show immediately?
-      // The requirement is to schedule for future.
-
       final now = tz.TZDateTime.now(tz.local);
       final targetDay = now.add(Duration(days: daysAhead));
+
+      // Use provided hour/minute or fallback to verse/now (though hour/minute should be provided)
+      final h = hour ?? now.hour;
+      final m = minute ?? now.minute;
 
       var scheduledDate = tz.TZDateTime(
         tz.local,
         targetDay.year,
         targetDay.month,
         targetDay.day,
-        hour,
-        minute,
+        h,
+        m,
       );
 
-      // If the resulting time is in the past, we shouldn't schedule it.
-      // (This happens if daysAhead=0 and the time has already passed today)
-      // CRITICAL FIX: If the time is in the past, try to push to future days
+      if (scheduledDate == null) return;
+      
+      // Catch-up logic: if the target time was within the last 5 minutes,
+      // and it's for today (daysAhead == 0), fire it almost immediately.
+      if (daysAhead == 0 &&
+          scheduledDate.isBefore(now) &&
+          now.difference(scheduledDate).inMinutes < 30) {
+        debugPrint('>> [DEBUG] Catching up on near-miss notification (ID $actualId)');
+        scheduledDate = now.add(const Duration(seconds: 5));
+      }
+
+      // Past check (for further future or day-pushing)
       var actualDaysAhead = daysAhead;
       while (scheduledDate.isBefore(now) &&
           actualDaysAhead < _daysToSchedule - 1) {
@@ -721,50 +769,43 @@ class NotificationService {
           nextDay.year,
           nextDay.month,
           nextDay.day,
-          hour,
-          minute,
+          h,
+          m,
         );
       }
 
-      // If we still couldn't find a future time within the window, skip this notification
-      if (scheduledDate.isBefore(now)) {
-        debugPrint(
-          '>> [DEBUG] Skipping past time at boundary: $scheduledDate (daysAhead=$actualDaysAhead, max=$_daysToSchedule)',
-        );
-        return;
-      }
+      if (scheduledDate.isBefore(now)) return;
 
-      // If we pushed to a different day, update the ID to avoid collisions
+      // ID adjustment for day-pushing
       if (actualDaysAhead != daysAhead) {
-        // Extract timeIndex from original ID and recalculate with new day
-        final timeIndex = id % 100;
-        actualId = _baseNotificationId + (actualDaysAhead * 100) + timeIndex;
-        debugPrint(
-          '>> [DEBUG] Time $hour:$minute pushed from day $daysAhead to day $actualDaysAhead, ID changed from $id to $actualId',
-        );
+        final timeIndex = id % 10;
+        final base = (id >= _prayerReminderIdOffset) ? _prayerReminderIdOffset : _baseNotificationId;
+        final multiplier = (id >= _prayerReminderIdOffset) ? 10 : 100;
+        actualId = base + (actualDaysAhead * multiplier) + timeIndex;
       }
 
-      debugPrint(
-        '>> [DEBUG] SUCCESS: ZonedSchedule ID $actualId set for EXACTLY: $scheduledDate (Verse ID: ${verse.number})',
-      );
+      final String finalTitle = title ?? 'آيات - Ayaat';
+      final String finalBody = body ?? (verse?.text ?? '');
 
+      debugPrint('>> [DEBUG] Attempting ZonedSchedule ID $actualId for $scheduledDate');
+      
       await _notifications.zonedSchedule(
         actualId,
-        'آيات - Ayaat',
-        verse.text,
+        finalTitle,
+        finalBody,
         scheduledDate,
         NotificationDetails(
           android: AndroidNotificationDetails(
-            'ayaat_daily_v2',
-            'Daily Quran Verse',
-            channelDescription: 'Daily Quran verse notifications',
+            id >= _prayerReminderIdOffset ? 'ayaat_prayer_reminders' : 'ayaat_daily_v2',
+            id >= _prayerReminderIdOffset ? 'Prayer Reminders' : 'Daily Quran Verse',
+            channelDescription: id >= _prayerReminderIdOffset ? 'Immediate prayer time reminders' : 'Daily Quran verse notifications',
             importance: Importance.max,
             priority: Priority.max,
-            styleInformation: BigTextStyleInformation(
+            styleInformation: verse != null ? BigTextStyleInformation(
               verse.text,
-              contentTitle: 'آيات - Ayaat',
+              contentTitle: finalTitle,
               summaryText: verse.reference,
-            ),
+            ) : BigTextStyleInformation(finalBody),
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -775,11 +816,48 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.alarmClock,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: verse.number.toString(),
+        payload: verse?.number.toString(),
       );
+      
+      debugPrint('>> [DEBUG] Scheduled ID $actualId for $scheduledDate (Title: $finalTitle)');
     } catch (e) {
-      debugPrint('Error scheduling notification $actualId: $e');
+      debugPrint('Error in _scheduleSingleNotification $actualId: $e');
     }
+  }
+
+  String _getPrayerName(int index, AppLanguage lang) {
+    final arabicNames = ['الفجر', 'الظهر', 'العصر', 'المغرب', 'العشاء'];
+    final englishNames = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    if (lang == AppLanguage.arabic) return arabicNames[index];
+    return englishNames[index];
+  }
+
+  /// Test notification to verify system works (for 10 seconds from now)
+  Future<void> testNotification() async {
+    final now = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10));
+    final verse = _fallbackVerses[0];
+    
+    await _notifications.zonedSchedule(
+      9999,
+      'Test Notification - Ayaat',
+      'This is a test to verify notifications are working! Click to see the verse.',
+      now,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'ayaat_test',
+          'Test Notifications',
+          channelDescription: 'Testing notification system',
+          importance: Importance.max,
+          priority: Priority.max,
+        ),
+        iOS: const DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.alarmClock,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: verse.number.toString(),
+    );
+    debugPrint('>> [DEBUG] Test notification scheduled for 10 seconds from now.');
   }
 
   /// Get the last notification verse data

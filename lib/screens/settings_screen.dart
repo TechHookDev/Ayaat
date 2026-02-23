@@ -803,9 +803,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ? TextDirection.rtl
                                     : TextDirection.ltr,
                               ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _getDevelopedBy(),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _getDevelopedBy(),
                                 style: GoogleFonts.amiri(
                                   fontSize: 12,
                                   color: Colors.white38,
@@ -917,10 +917,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          // Version
-          Text(
-            'v$_appVersion',
-            style: GoogleFonts.outfit(fontSize: 12, color: Colors.white38),
+          GestureDetector(
+            onLongPress: () async {
+              await _notificationService.testNotification();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Test notification triggered (10s)'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: Text(
+              'v$_appVersion',
+              style: GoogleFonts.outfit(fontSize: 12, color: Colors.white38),
+            ),
           ),
           const SizedBox(height: 20),
         ],

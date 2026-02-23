@@ -65,26 +65,9 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   }
 
   void _setupScrollListener() {
-    _scrollController.addListener(() {
-      if (!_scrollController.hasClients || _verses.isEmpty) return;
-
-      final scrollOffset = _scrollController.offset;
-
-      // SIMPLE: just track which verse index is roughly at top based on scroll
-      // Average verse height ~180px with header ~100px
-      double headerOffset = (widget.surahNumber != 1 && widget.surahNumber != 9)
-          ? 100
-          : 0;
-      double adjustedOffset = (scrollOffset - headerOffset).clamp(
-        0,
-        double.infinity,
-      );
-      int estimatedIndex = (adjustedOffset / 180).floor();
-
-      if (estimatedIndex >= 0 && estimatedIndex < _verses.length) {
-        _currentVisibleVerseIndex = estimatedIndex;
-      }
-    });
+    // We removed the inaccurate estimatedIndex logic that was causing drift.
+    // Precise position calculation is now handled on-demand (e.g., in PopScope)
+    // using _findCurrentVisibleVerseIndex().
   }
 
   void _debouncedSaveLastReadPosition(int verseIndex) {
@@ -113,49 +96,43 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
       return null;
     }
 
-    final scrollOffset = _scrollController.offset;
     final viewportHeight = _scrollController.position.viewportDimension;
+    
+    // Header/AppBar + SafeArea usually takes the top 150-180px.
+    // We want to detect the verse that is primarily visible.
+    // Setting target to 37% of height for the "absolute perfect" detection.
+    final double targetScreenY = viewportHeight * 0.37;
+    
+    // If we're at the very top of the list, just return 0
+    if (_scrollController.offset < 50) return 0;
 
-    // Target area: top 20% of viewport (where user focus is)
-    final targetY = scrollOffset + (viewportHeight * 0.2);
-
-    // Find the verse whose TOP is closest to the target Y position
-    // This is more accurate than center-based detection
     int? bestIndex;
-    double bestScore = double.infinity;
+    double minDistance = double.infinity;
 
     for (int i = 0; i < _verses.length; i++) {
       final key = _verseKeys[i];
-      if (key?.currentContext != null) {
-        final box = key!.currentContext!.findRenderObject() as RenderBox?;
-        if (box != null) {
+      final context = key?.currentContext;
+      if (context != null) {
+        final box = context.findRenderObject() as RenderBox?;
+        if (box != null && box.hasSize) {
           final position = box.localToGlobal(Offset.zero);
           final verseTop = position.dy;
-          final verseBottom = verseTop + box.size.height;
+          
+          // If the verse is way above the target (buried under header), skip
+          // Header is usually ~160px. If verse top is < 120, it's mostly hidden.
+          if (verseTop < 120 && i < _verses.length - 1) continue;
 
-          // Calculate how well this verse matches the target position
-          // Prefer verses whose TOP is near the target Y
-          final distanceFromTarget = (verseTop - targetY).abs();
+          final distance = (verseTop - targetScreenY).abs();
 
-          // Bonus: verse is actually visible on screen
-          final isVisible =
-              verseBottom > scrollOffset &&
-              verseTop < scrollOffset + viewportHeight;
-
-          // Score: distance from target (lower is better)
-          // If verse is not visible, add penalty
-          double score = distanceFromTarget;
-          if (!isVisible) score += 1000; // Heavy penalty for off-screen verses
-
-          if (score < bestScore) {
-            bestScore = score;
+          if (distance < minDistance) {
+            minDistance = distance;
             bestIndex = i;
           }
         }
       }
     }
 
-    return bestIndex;
+    return bestIndex ?? 0;
   }
 
   void _onAudioStateChanged() {
@@ -425,9 +402,8 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   }
 
   Future<void> _changeFontSize(double delta) async {
-    // Save current visible verse index before changing font
-    final currentVerseIndex =
-        _currentVisibleVerseIndex ?? _getCurrentVisibleVerseIndex();
+    // Use precise detection before changing font size
+    final currentVerseIndex = _findCurrentVisibleVerseIndex();
 
     final newSize = (_fontSize + delta).clamp(16.0, 40.0);
     await _prefsService.saveFontSize(newSize);
@@ -443,29 +419,6 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     }
   }
 
-  /// Get the currently visible verse index based on scroll position
-  int? _getCurrentVisibleVerseIndex() {
-    if (!_scrollController.hasClients || _verses.isEmpty) return null;
-
-    final scrollOffset = _scrollController.offset;
-    final viewportDimension = _scrollController.position.viewportDimension;
-    final centerOffset = scrollOffset + (viewportDimension * 0.3);
-
-    // Find the verse closest to this offset
-    for (int i = 0; i < _verseKeys.length; i++) {
-      final key = _verseKeys[i];
-      if (key?.currentContext != null) {
-        final box = key!.currentContext!.findRenderObject() as RenderBox?;
-        if (box != null) {
-          final position = box.localToGlobal(Offset.zero);
-          if (position.dy >= 0 && position.dy <= viewportDimension) {
-            return i;
-          }
-        }
-      }
-    }
-    return null;
-  }
 
   Future<void> _playAudio(
     int globalVerseNumber,
@@ -552,8 +505,8 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
       canPop: true,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) {
-          // Use tracked visible verse index, or calculate from scroll
-          int verseIndex = _currentVisibleVerseIndex ?? 0;
+          // Calculate EXACT visible verse index only when user is actually leaving
+          int verseIndex = _findCurrentVisibleVerseIndex() ?? 0;
 
           // Validate the index
           if (verseIndex >= _verses.length) {
@@ -569,7 +522,7 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
             ayahNumber,
           );
           debugPrint(
-            '💾 SAVED: Surah ${widget.surahNumber}, Ayah $ayahNumber (index: $verseIndex)',
+            '💾 PRECISE SAVE: Surah ${widget.surahNumber}, Ayah $ayahNumber (index: $verseIndex)',
           );
         }
       },
@@ -879,6 +832,7 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   }
 
   Widget _buildVerseItem(int verseIndex, Map<String, dynamic> verse) {
+    final isArabic = widget.language == AppLanguage.arabic;
     final isTarget = verseIndex == _targetVerseIndex;
     final verseNumber = verse['numberInSurah'] as int;
     final globalNumber =

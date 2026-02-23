@@ -23,7 +23,7 @@ void main() async {
     await JustAudioBackground.init(
       androidNotificationChannelId: 'com.ayaat.ayaat.audio.v6',
       androidNotificationChannelName: 'Ayaat: Now Reciting',
-      androidNotificationOngoing: true,
+      androidNotificationOngoing: false,
       androidNotificationIcon: 'mipmap/ic_launcher',
     );
   } catch (e) {

@@ -203,7 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _calculatePrayerTimes(double latitude, double longitude) async {
     final coordinates = Coordinates(latitude, longitude);
-    final params = CalculationMethod.karachi.getParameters();
+    final params = CalculationMethod.muslim_world_league.getParameters();
     params.madhab = Madhab.shafi;
 
     final prayerTimes = PrayerTimes.today(coordinates, params);
