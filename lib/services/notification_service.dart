@@ -54,6 +54,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   final QuranApiService _quranApi = QuranApiService();
   final Random _random = Random();
+  bool _isScheduling = false;
 
   // Stream to notify when notification is tapped
   static final _notificationTappedController =
@@ -470,7 +471,7 @@ class NotificationService {
   /// Check if prayer reminders are enabled
   Future<bool> isPrayerRemindersEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_prayerRemindersEnabledKey) ?? true; // Default to true
+    return prefs.getBool(_prayerRemindersEnabledKey) ?? false; // Default switched to false
   }
 
   /// Set prayer reminders status
@@ -525,10 +526,18 @@ class NotificationService {
     bool useDelay = false,
     bool isPrayerMode = false,
   }) async {
-    // delay to let the app load first if requested
-    if (useDelay) {
-      await Future.delayed(const Duration(seconds: 5));
+    // Prevent concurrent scheduling
+    if (_isScheduling) {
+      debugPrint('>> [DEBUG] Scheduling already in progress. Skipping...');
+      return false;
     }
+    _isScheduling = true;
+
+    try {
+      // delay to let the app load first if requested
+      if (useDelay) {
+        await Future.delayed(const Duration(seconds: 5));
+      }
 
     // Check notification permission first
     if (Platform.isAndroid) {
@@ -582,7 +591,8 @@ class NotificationService {
     await prefs.setString(_notificationTimesKey, jsonEncode(timesJson));
     await prefs.setBool(_notificationsEnabledKey, true);
 
-    // Move cancelAll down to right before we start succeeding in scheduling
+    // Clear everything at the start to ensure a clean slate
+    await _notifications.cancelAll();
 
     // Schedule for the next 7 days
     final langService = LanguageService();
@@ -595,10 +605,8 @@ class NotificationService {
       'Fetching and scheduling $totalVersesNeeded truly random verses in batches of $batchSize...',
     );
 
-    int currentVerseIndex = 0;
-    bool hasCancelledOld = false;
+      int currentVerseIndex = 0;
 
-    try {
       final bool prayerRemindersEnabled = await isPrayerRemindersEnabled();
       Coordinates? myCoordinates;
       CalculationParameters? params;
@@ -630,11 +638,6 @@ class NotificationService {
 
         // Wait for batch
         final batchVerses = await Future.wait(batchFutures);
-
-        if (!hasCancelledOld) {
-          await _notifications.cancelAll();
-          hasCancelledOld = true;
-        }
 
         // Schedule THIS batch
         for (final verse in batchVerses) {
@@ -732,6 +735,8 @@ class NotificationService {
     } catch (e) {
       debugPrint('Error during batch scheduling: $e');
       return false;
+    } finally {
+      _isScheduling = false;
     }
   }
 
@@ -762,8 +767,6 @@ class NotificationService {
         h,
         m,
       );
-
-      if (scheduledDate == null) return;
       
       // Catch-up logic: if the target time was within the last 5 minutes,
       // and it's for today (daysAhead == 0), fire it almost immediately.

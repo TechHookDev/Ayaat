@@ -86,9 +86,17 @@ class Reciters {
     audioUrlPattern: 'https://everyayah.com/data/Yasser_Ad-Dussary_128kbps/{surah}{ayah}.mp3',
   );
 
+  static const Reciter shuraim = Reciter(
+    id: 'shuraim',
+    name: 'Saud Al-Shuraim',
+    arabicName: 'سعود الشريم',
+    audioUrlPattern: 'https://everyayah.com/data/Saood_ash-Shuraym_128kbps/{surah}{ayah}.mp3',
+  );
+
   /// List of all available reciters
   static const List<Reciter> all = [
     alafasy,
+    shuraim,
     sudais,
     ghamdi,
     muaiqly,

@@ -8,6 +8,7 @@ import '../services/progress_service.dart';
 import '../services/audio_service.dart';
 import '../widgets/reciter_selector.dart';
 import '../widgets/mini_player.dart';
+import '../services/quran_api.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -44,6 +45,7 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   double _fontSize = 24.0;
   final PreferencesService _prefsService = PreferencesService();
   final ProgressService _progressService = ProgressService();
+  Map<String, dynamic>? _nextSurahData;
 
   // Progressive Rendering State
   int _renderedVerseCount = 0;
@@ -267,8 +269,6 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
             });
           });
         }
-      } else {
-        throw Exception('Failed to load surah: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
@@ -277,6 +277,29 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
           _isLoading = false;
         });
       }
+    }
+    
+    // Fetch next surah info if available
+    if (widget.surahNumber < 114) {
+      _loadNextSurahInfo();
+    }
+  }
+
+  Future<void> _loadNextSurahInfo() async {
+    try {
+      final quranApi = QuranApiService();
+      final surahs = await quranApi.getSurahs(widget.language);
+      final nextSurah = surahs.firstWhere(
+        (s) => s['number'] == widget.surahNumber + 1,
+        orElse: () => null,
+      );
+      if (mounted && nextSurah != null) {
+        setState(() {
+          _nextSurahData = nextSurah;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading next surah info: $e');
     }
   }
 
@@ -811,7 +834,109 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
                 ),
               ),
             ),
+          
+          // Next Surah Navigation Card
+          if (_nextSurahData != null) _buildNextSurahCard(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNextSurahCard() {
+    final isArabic = widget.language == AppLanguage.arabic;
+    final nextSurahName = isArabic ? _nextSurahData!['name'] : _nextSurahData!['englishName'];
+    final ayahsCount = _nextSurahData!['numberOfAyahs'];
+    
+    // Signature Ayaat Colors
+    const primaryGreen = Color(0xFF4CAF50);
+    const goldColor = Color(0xFFFFD700);
+
+    String promptText;
+    String ayahsText;
+    if (isArabic) {
+      promptText = 'السورة التالية هي';
+      // Arabic pluralization rules from surah_list_screen
+      if (ayahsCount >= 3 && ayahsCount <= 10) {
+        ayahsText = '$ayahsCount آيات';
+      } else {
+        ayahsText = '$ayahsCount آية';
+      }
+    } else if (widget.language == AppLanguage.french) {
+      promptText = 'La sourate suivante est';
+      ayahsText = '$ayahsCount Versets';
+    } else {
+      promptText = 'The next Surah is';
+      ayahsText = '$ayahsCount Verses';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 80), // Reduced top padding to 32
+      child: Center(
+        child: Column(
+          children: [
+            Text(
+              promptText,
+              style: GoogleFonts.outfit(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              nextSurahName,
+              style: GoogleFonts.amiri(
+                color: goldColor,
+                fontSize: 42,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            // Corrected RTL alignment for Arabic numbers
+            Directionality(
+              textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+              child: Text(
+                ayahsText,
+                style: GoogleFonts.outfit(
+                  color: Colors.white.withOpacity(0.3),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VerseDetailScreen(
+                      surahNumber: widget.surahNumber + 1,
+                      language: widget.language,
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                elevation: 4,
+                shadowColor: primaryGreen.withOpacity(0.5),
+              ),
+              child: Text(
+                isArabic ? 'واصل القراءة' : (widget.language == AppLanguage.french ? 'Démarrer la lecture' : 'Continue Reading'),
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

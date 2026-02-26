@@ -537,7 +537,12 @@ class _SurahListScreenState extends State<SurahListScreen> {
 
     String ayahsText;
     if (isArabic) {
-      ayahsText = '$ayahsCount آية';
+      // Arabic pluralization rules: 3-10 use 'Ayat', 11+ use 'Aya'
+      if (ayahsCount >= 3 && ayahsCount <= 10) {
+        ayahsText = '$ayahsCount آيات';
+      } else {
+        ayahsText = '$ayahsCount آية';
+      }
     } else if (isFrench) {
       ayahsText = '$ayahsCount Versets';
     } else {
@@ -591,17 +596,28 @@ class _SurahListScreenState extends State<SurahListScreen> {
                     : CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    surahName,
-                    style: GoogleFonts.amiri(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      height: 1.2,
-                    ),
-                    textAlign: isArabic ? TextAlign.right : TextAlign.left,
-                  ),
-                ],
+                   Text(
+                     surahName,
+                     style: GoogleFonts.amiri(
+                       color: Colors.white,
+                       fontSize: 22,
+                       fontWeight: FontWeight.bold,
+                       height: 1.2,
+                     ),
+                     textAlign: isArabic ? TextAlign.right : TextAlign.left,
+                   ),
+                   const SizedBox(height: 2),
+                   Text(
+                     ayahsText,
+                     style: GoogleFonts.outfit(
+                       color: Colors.white.withOpacity(0.5),
+                       fontSize: 13,
+                       fontWeight: FontWeight.w400,
+                     ),
+                     textAlign: isArabic ? TextAlign.right : TextAlign.left,
+                     textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+                   ),
+                 ],
               ),
             ],
           ),

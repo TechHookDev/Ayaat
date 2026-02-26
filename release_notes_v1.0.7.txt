@@ -5,4 +5,3 @@ ar-SA
 إصلاح مشكلة جدولة تنبيهات أوقات الصلاة التلقائية
 
 fr-FR
-Correction du problème de planification des notifications pour les heures de prière automatiques
