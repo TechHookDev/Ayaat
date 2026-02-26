@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../services/language_service.dart';
 import '../services/preferences_service.dart';
-import '../services/progress_service.dart';
 import '../services/audio_service.dart';
 import '../widgets/reciter_selector.dart';
 import '../widgets/mini_player.dart';
@@ -44,7 +43,6 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
   List<Map<String, dynamic>> _bookmarks = [];
   double _fontSize = 24.0;
   final PreferencesService _prefsService = PreferencesService();
-  final ProgressService _progressService = ProgressService();
   Map<String, dynamic>? _nextSurahData;
 
   // Progressive Rendering State
@@ -416,7 +414,6 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
     } else {
       await _prefsService.addBookmark(widget.surahNumber, verseInSurah);
       // Gamification: Give points for intentional bookmarking
-      await _progressService.addPoints(10);
     }
 
     // Refresh bookmarks list
@@ -459,8 +456,7 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
         );
 
         // Gamification: Give points for audio engagement
-        await _progressService.addPoints(5);
-        await _audioService.playAyah(
+          await _audioService.playAyah(
           globalAyahNumber: globalVerseNumber,
           surahNumber: widget.surahNumber,
           ayahIndex: index,
@@ -491,7 +487,6 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
 
     try {
       // Gamification: Give points for playing entire surah
-      await _progressService.addPoints(10);
       await _audioService.playSurah(
         surahNumber: widget.surahNumber,
         surahNames: _surahNames,
@@ -906,16 +901,25 @@ class _VerseDetailScreenState extends State<VerseDetailScreen> {
             ),
             const SizedBox(height: 40),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VerseDetailScreen(
-                      surahNumber: widget.surahNumber + 1,
-                      language: widget.language,
-                    ),
-                  ),
+              onPressed: () async {
+                // BEFORE navigating, save the next surah starting position 
+                // to ensure the tracker is updated immediately
+                await _prefsService.saveLastReadPosition(
+                  widget.surahNumber + 1,
+                  1,
                 );
+                
+                if (mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VerseDetailScreen(
+                        surahNumber: widget.surahNumber + 1,
+                        language: widget.language,
+                      ),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryGreen,

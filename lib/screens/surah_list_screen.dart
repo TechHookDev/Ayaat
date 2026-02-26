@@ -4,6 +4,7 @@ import '../services/quran_api.dart';
 import '../services/language_service.dart';
 import '../services/preferences_service.dart';
 import 'verse_detail_screen.dart';
+import '../main.dart';
 
 class SurahListScreen extends StatefulWidget {
   const SurahListScreen({super.key});
@@ -12,7 +13,7 @@ class SurahListScreen extends StatefulWidget {
   State<SurahListScreen> createState() => _SurahListScreenState();
 }
 
-class _SurahListScreenState extends State<SurahListScreen> {
+class _SurahListScreenState extends State<SurahListScreen> with RouteAware {
   final QuranApiService _apiService = QuranApiService();
   final LanguageService _languageService = LanguageService();
   final PreferencesService _prefs = PreferencesService();
@@ -29,6 +30,26 @@ class _SurahListScreenState extends State<SurahListScreen> {
   @override
   void initState() {
     super.initState();
+    _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to route observer
+    routeObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    // Unsubscribe from route observer
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Refresh data when returning from VerseDetailScreen
     _loadData();
   }
 

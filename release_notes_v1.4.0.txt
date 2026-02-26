@@ -1,0 +1,9 @@
+Ayaat Global Release v1.4.0
+
+Highlights:
+- Mushaf Pro: High-quality audio recitations and smooth navigation.
+- Smart Reminders: Personalized Quran daily reminders.
+- Multi-Language support (Arabic, English, French).
+- Clean Experience: Removed gamification features (streaks, points) to focus on the Quran.
+- Bug Fixes: Resolved issue with "Last Read" tracker when switching surahs.
+- Stability and performance improvements.

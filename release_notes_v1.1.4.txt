@@ -1,0 +1,6 @@
+Ayaat Release Notes v1.1.4
+
+Key Improvements:
+- Fixed the "Last Read" tracker issue when switching to the next surah.
+- Improved progress data refreshing in the Surah List.
+- General performance and stability enhancements.

@@ -30,7 +30,7 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
 
   Future<void> _dismissSplash() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_seen_v109_splash', true);
+    await prefs.setBool('has_seen_v140_splash', true);
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -67,7 +67,7 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                     border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
                   ),
                   child: const Icon(
-                    Icons.auto_awesome,
+                    Icons.star_rounded,
                     color: Color(0xFFFFD700),
                     size: 64,
                   ),
@@ -75,7 +75,7 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                 const SizedBox(height: 40),
                 // Heading
                 Text(
-                  isArabic ? 'تحديث آيات الجديد' : 'Ayaat Update',
+                  isArabic ? 'مرحباً بك في آيات' : 'Welcome to Ayaat',
                   style: GoogleFonts.amiri(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
@@ -84,7 +84,7 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  isArabic ? 'إصدار 1.0.9' : 'Version 1.0.9',
+                  isArabic ? 'الإصدار العام 1.4.0' : 'Global Release 1.4.0',
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     color: Colors.white54,
@@ -95,27 +95,27 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                 
                 // Feature List
                 _buildFeatureRow(
-                  icon: Icons.local_fire_department,
-                  title: isArabic ? 'نظام النقاط والمواظبة' : 'Daily Streak & Points',
+                  icon: Icons.menu_book_rounded,
+                  title: isArabic ? 'المصحف الاحترافي' : 'Mushaf Pro',
                   desc: isArabic 
-                      ? 'بناء عادة يومية وتتبع قراءتك مع نظام النقاط الجديد' 
-                      : 'Build a daily habit and track your progress with our new points system.',
+                      ? 'استماع لتلاوات خاشعة وتتبع ختمتك بسلاسة تامة' 
+                      : 'High-quality audio recitations with advanced reading progress tracking.',
                 ),
                 const SizedBox(height: 30),
                 _buildFeatureRow(
-                  icon: Icons.menu_book,
-                  title: isArabic ? 'المصحف' : 'Mushaf',
+                  icon: Icons.notifications_active_rounded,
+                  title: isArabic ? 'تنبيهات ذكية' : 'Smart Reminders',
                   desc: isArabic 
-                      ? 'الاستماع لتلاوة الآيات بصوت نقي وحفظ موضع القراءة بسلاسة' 
-                      : 'Listen to clear audio recitations and save your progress seamlessly.',
+                      ? 'آيات عشوائية تصلك في أوقاتك المفضلة لتنير يومك' 
+                      : 'Receive beautiful Quranic verses at your preferred times daily.',
                 ),
                 const SizedBox(height: 30),
                 _buildFeatureRow(
-                  icon: Icons.text_fields,
-                  title: isArabic ? 'تحكم في حجم الخط' : 'Adjustable Font Size',
+                  icon: Icons.language_rounded,
+                  title: isArabic ? 'دعم لغات متعددة' : 'Multi-Language Support',
                   desc: isArabic 
-                      ? 'تكبير وتصغير حجم الخط لراحة عينيك أثناء القراءة الاستثنائية' 
-                      : 'Increase or decrease the font size for a comfortable reading experience.',
+                      ? 'تصفح التطبيق باللغات العربية والإنجليزية والفرنسية' 
+                      : 'Experience the app in Arabic, English, and French.',
                 ),
                 
                 const Spacer(),

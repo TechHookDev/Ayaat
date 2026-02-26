@@ -120,7 +120,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     bool showSplash = false;
     if (notificationVerse == null) {
       final prefs = await SharedPreferences.getInstance();
-      showSplash = !(prefs.getBool('has_seen_v109_splash') ?? false);
+      showSplash = !(prefs.getBool('has_seen_v140_splash') ?? false);
     }
 
     if (mounted) {

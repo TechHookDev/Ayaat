@@ -273,7 +273,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       // Mark the 1.0.9 update splash screen as seen so new users don't see it on their second launch
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('has_seen_v109_splash', true);
+      await prefs.setBool('has_seen_v140_splash', true);
 
       // Clear notification verse so app starts on home screen, not verse detail
       await _notificationService.clearNotificationVerse();
