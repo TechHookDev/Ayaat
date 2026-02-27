@@ -84,7 +84,7 @@ class _UpdateSplashScreenState extends State<UpdateSplashScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  isArabic ? 'الإصدار العام 1.4.0' : 'Global Release 1.4.0',
+                  isArabic ? 'الإصدار العام 1.1.4' : 'Global Release 1.1.4',
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     color: Colors.white54,

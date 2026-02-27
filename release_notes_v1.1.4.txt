@@ -1,6 +1,9 @@
-Ayaat Release Notes v1.1.4
+Ayaat Global Release v1.1.4
 
-Key Improvements:
-- Fixed the "Last Read" tracker issue when switching to the next surah.
-- Improved progress data refreshing in the Surah List.
-- General performance and stability enhancements.
+Highlights:
+- Mushaf Pro: High-quality audio recitations and smooth navigation.
+- Smart Reminders: Personalized Quran daily reminders.
+- Multi-Language support (Arabic, English, French).
+- Clean Experience: Removed gamification features (streaks, points) to focus on the Quran.
+- Bug Fixes: Resolved issue with "Last Read" tracker when switching surahs.
+- Stability and performance improvements.
