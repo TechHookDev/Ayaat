@@ -1,0 +1,14 @@
+en-US:
+**Fixes & Improvements:**
+- Addressed Google Play policy compliance regarding location permissions. Background location access is removed; prayer times now rely solely on standard foreground location checks.
+- Resolved edge-to-edge UI display warnings on Android 15.
+
+fr-FR:
+**Corrections et améliorations :**
+- Mise en conformité avec la politique de Google Play concernant les autorisations de localisation. L'accès à la localisation en arrière-plan est supprimé ; les heures de prière s'appuient désormais uniquement sur les vérifications standard de l'emplacement au premier plan.
+- Résolution des avertissements d'affichage de l'interface utilisateur "edge-to-edge" sur Android 15.
+
+ar:
+**الإصلاحات والتحسينات:**
+- التوافق مع سياسة Google Play فيما يتعلق بأذونات الموقع. أُزيل الوصول إلى الموقع في الخلفية؛ وتعتمد أوقات الصلاة الآن فقط على فحوصات الموقع الأساسية.
+- حل تحذيرات عرض واجهة المستخدم "edge-to-edge" على Android 15.

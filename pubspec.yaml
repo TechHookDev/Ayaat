@@ -15,9 +15,9 @@ repository: https://github.com/TechHookDev/Ayaat
 # In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-# In Windows, build-name is used as the major, minor, and patch parts
+# in Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.4+60
+version: 1.1.5+61
 environment:
   sdk: ^3.10.8
 
